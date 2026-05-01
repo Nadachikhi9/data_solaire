@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:data_solaire/app/theme/app_theme.dart';
+import 'package:data_solaire/app/ui/ui_motion.dart';
 import 'package:data_solaire/core/constants/app_strings.dart';
 import 'package:data_solaire/core/feature_flags.dart';
+import 'package:data_solaire/data/models/rtdb_connection_status.dart';
 import 'package:data_solaire/data/services/fcm_service.dart';
 import 'package:data_solaire/modules/dashboard/controllers/dashboard_controller.dart';
 import 'package:data_solaire/modules/dashboard/widgets/health_diagnostics_widget.dart';
@@ -18,120 +21,181 @@ class DashboardView extends GetView<DashboardController> {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final padding = EdgeInsets.symmetric(
-      horizontal: width < 600 ? 12 : 24,
-      vertical: 16,
+      horizontal: width < 600 ? 16 : 28,
+      vertical: 20,
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(AppStrings.dashboardTitle),
-            Text(
-              AppStrings.appSubtitle,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.onMuted,
-                  ),
-            ),
-          ],
-        ),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      backgroundColor: AppTheme.scaffold,
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          const _DashboardAlertStrip(),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final w = constraints.maxWidth;
-                final isWide = w >= 1200;
-                final isMedium = w >= 600 && w < 1200;
+          const _MeshBackdrop(),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _HeroHeader(padding: padding).heliosEntrance(context, index: 0),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final w = constraints.maxWidth;
+                      final isWide = w >= 1200;
+                      final isMedium = w >= 700 && w < 1200;
 
-                final telemetry = _section(
-                  title: AppStrings.telemetrySection,
-                  child: const TelemetryCardsWidget(),
-                );
-                final health = _section(
-                  title: AppStrings.diagnosticsSection,
-                  child: const HealthDiagnosticsWidget(),
-                );
-                final chart = _section(
-                  title: AppStrings.performanceSection,
-                  child: const PowerChartWidget(),
-                );
-                final viewer3d = _section(
-                  title: AppStrings.tracker3dSection,
-                  child: const Tracker3dWidget(),
-                );
+                      final telemetry = _section(
+                        context,
+                        index: 1,
+                        title: AppStrings.telemetrySection,
+                        child: const TelemetryCardsWidget(fillVertical: false),
+                      );
+                      final health = _section(
+                        context,
+                        index: 2,
+                        title: AppStrings.diagnosticsSection,
+                        child: const HealthDiagnosticsWidget(fillVertical: false),
+                      );
+                      final chart = _section(
+                        context,
+                        index: 3,
+                        title: AppStrings.performanceSection,
+                        child: const PowerChartWidget(fillVertical: false),
+                      );
+                      final viewer3d = _section(
+                        context,
+                        index: 4,
+                        title: AppStrings.tracker3dSection,
+                        child: const Tracker3dWidget(fillVertical: false),
+                      );
 
-                if (isWide) {
-                  return SingleChildScrollView(
-                    padding: padding,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      if (isWide) {
+                        return SingleChildScrollView(
+                          padding: padding,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: _section(
+                                      context,
+                                      index: 1,
+                                      title: AppStrings.telemetrySection,
+                                      child: const TelemetryCardsWidget(
+                                          fillVertical: false),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    flex: 2,
+                                    child: _section(
+                                      context,
+                                      index: 2,
+                                      title:
+                                          AppStrings.diagnosticsSection,
+                                      child:
+                                          const HealthDiagnosticsWidget(
+                                              fillVertical: false),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: _section(
+                                      context,
+                                      index: 3,
+                                      title:
+                                          AppStrings.performanceSection,
+                                      child: const PowerChartWidget(
+                                          fillVertical: false),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    flex: 2,
+                                    child: _section(
+                                      context,
+                                      index: 4,
+                                      title: AppStrings.tracker3dSection,
+                                      child:
+                                          const Tracker3dWidget(fillVertical: false),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (isMedium) {
+                        return SingleChildScrollView(
+                          padding: padding,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: _section(
+                                      context,
+                                      index: 1,
+                                      title: AppStrings.telemetrySection,
+                                      child: const TelemetryCardsWidget(
+                                          fillVertical: false),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: _section(
+                                      context,
+                                      index: 2,
+                                      title:
+                                          AppStrings.diagnosticsSection,
+                                      child:
+                                          const HealthDiagnosticsWidget(
+                                              fillVertical: false),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              chart,
+                              const SizedBox(height: 20),
+                              viewer3d,
+                            ],
+                          ),
+                        );
+                      }
+
+                      return SingleChildScrollView(
+                        padding: padding,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Expanded(flex: 3, child: telemetry),
-                            const SizedBox(width: 16),
-                            Expanded(flex: 2, child: health),
+                            telemetry,
+                            const SizedBox(height: 20),
+                            health,
+                            const SizedBox(height: 20),
+                            chart,
+                            const SizedBox(height: 20),
+                            viewer3d,
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(flex: 3, child: chart),
-                            const SizedBox(width: 16),
-                            Expanded(flex: 2, child: viewer3d),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                if (isMedium) {
-                  return SingleChildScrollView(
-                    padding: padding,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: telemetry),
-                            const SizedBox(width: 16),
-                            Expanded(child: health),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        chart,
-                        const SizedBox(height: 16),
-                        viewer3d,
-                      ],
-                    ),
-                  );
-                }
-
-                return SingleChildScrollView(
-                  padding: padding,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      telemetry,
-                      const SizedBox(height: 16),
-                      health,
-                      const SizedBox(height: 16),
-                      chart,
-                      const SizedBox(height: 16),
-                      viewer3d,
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ],
             ),
           ),
         ],
@@ -139,115 +203,291 @@ class DashboardView extends GetView<DashboardController> {
     );
   }
 
-  Widget _section({required String title, required Widget child}) {
+  Widget _section(
+    BuildContext context, {
+    required int index,
+    required String title,
+    required Widget child,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: AppTheme.onDark,
-              fontSize: 16,
-            ),
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 22,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(99),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [AppTheme.primary, AppTheme.teal],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title.toUpperCase(),
+                style: AppTheme.labelInstrument(context).copyWith(
+                  color: AppTheme.onSurface,
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ],
           ),
-        ),
-        child,
+        ).heliosEntrance(context, index: index),
+        child.heliosEntrance(context, index: index + 1),
       ],
     );
   }
 }
 
-class _DashboardAlertStrip extends StatelessWidget {
-  const _DashboardAlertStrip();
+class _MeshBackdrop extends StatelessWidget {
+  const _MeshBackdrop();
 
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      clipBehavior: Clip.none,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppTheme.surfaceHigh.withValues(alpha: 0.35),
+                AppTheme.scaffold,
+                AppTheme.scaffold,
+              ],
+              stops: const [0.0, 0.35, 1.0],
+            ),
+          ),
+        ),
+        Positioned(
+          right: -80,
+          top: -40,
+          child: IgnorePointer(
+            child: Container(
+              width: 360,
+              height: 360,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppTheme.violet.withValues(alpha: 0.12),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroHeader extends StatelessWidget {
+  const _HeroHeader({required this.padding});
+
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final dash = Get.find<DashboardController>();
+
+    return Padding(
+      padding: padding,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppStrings.dashboardTitle,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.onSurface,
+                        letterSpacing: -0.03,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  AppStrings.appSubtitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.onMuted,
+                        height: 1.4,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          _DashboardStatusIcons(),
+          const SizedBox(width: 8),
+          _RtdbLiveChip(controller: dash),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardStatusIcons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dash = Get.find<DashboardController>();
     final fcm = Get.find<FcmService>();
 
     return Obx(() {
-      final parts = <Widget>[];
+      dash.rtdbError.value;
+      if (kIsWeb) {
+        fcm.messagingAvailable.value;
+        fcm.messagingLastError.value;
+      }
+
+      final icons = <Widget>[];
       if (FeatureFlags.useMockRealtimeData) {
-        parts.add(
-          _AlertLine(
-            icon: Icons.waving_hand_outlined,
-            text: AppStrings.demoModeBanner,
-            accent: AppTheme.warning,
+        icons.add(
+          Tooltip(
+            message: AppStrings.demoModeBanner,
+            child: Icon(
+              Icons.waving_hand_outlined,
+              size: 22,
+              color: AppTheme.warning,
+            ),
           ),
         );
       }
       final rErr = dash.rtdbError.value;
       if (rErr != null && rErr.isNotEmpty) {
-        parts.add(
-          _AlertLine(
-            icon: Icons.cloud_sync_outlined,
-            text: rErr,
-            accent: AppTheme.warning,
+        icons.add(
+          Tooltip(
+            message: rErr,
+            child: Icon(
+              Icons.cloud_sync_outlined,
+              size: 22,
+              color: AppTheme.warning,
+            ),
           ),
         );
       }
       if (kIsWeb && !fcm.messagingAvailable.value) {
         final detail = fcm.messagingLastError.value;
-        parts.add(
-          _AlertLine(
-            icon: Icons.notifications_off_outlined,
-            text: detail ?? AppStrings.fcmDegradedBanner,
-            accent: AppTheme.accent,
+        icons.add(
+          Tooltip(
+            message: detail ?? AppStrings.fcmDegradedBanner,
+            child: Icon(
+              Icons.notifications_off_outlined,
+              size: 22,
+              color: AppTheme.violet,
+            ),
           ),
         );
       }
-      if (parts.isEmpty) return const SizedBox.shrink();
 
-      return Material(
-        color: AppTheme.surfaceVariant.withValues(alpha: 0.35),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < parts.length; i++) ...[
-                if (i > 0) const SizedBox(height: 6),
-                parts[i],
-              ],
-            ],
-          ),
-        ),
+      if (icons.isEmpty) return const SizedBox.shrink();
+
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < icons.length; i++) ...[
+            if (i > 0) const SizedBox(width: 6),
+            icons[i],
+          ],
+        ],
       );
     });
   }
 }
 
-class _AlertLine extends StatelessWidget {
-  const _AlertLine({
-    required this.icon,
-    required this.text,
-    required this.accent,
-  });
+class _RtdbLiveChip extends StatelessWidget {
+  const _RtdbLiveChip({required this.controller});
 
-  final IconData icon;
-  final String text;
-  final Color accent;
+  final DashboardController controller;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: accent),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.onDark,
-                  height: 1.35,
+    return Obx(() {
+    final status = controller.rtdbStatus.value;
+    final err = controller.rtdbError.value;
+    final listening = status == RtdbConnectionStatus.listening && err == null;
+
+    final Color fg;
+    final Color bg;
+    final IconData icon;
+    String label;
+    if (status == RtdbConnectionStatus.error || (err != null && err.isNotEmpty)) {
+      fg = AppTheme.danger;
+      bg = AppTheme.danger.withValues(alpha: 0.15);
+      icon = Icons.cloud_off_outlined;
+      label = 'RTDB';
+    } else if (listening) {
+      fg = AppTheme.teal;
+      bg = AppTheme.teal.withValues(alpha: 0.14);
+      icon = Icons.podcasts_rounded;
+      label = 'Flux temps réel';
+    } else {
+      fg = AppTheme.warning;
+      bg = AppTheme.warning.withValues(alpha: 0.14);
+      icon = Icons.hourglass_top_rounded;
+      label = 'Connexion…';
+    }
+
+    final reduced = motionReduced(context);
+    Widget dot = Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: listening ? fg : fg.withValues(alpha: 0.85),
+        boxShadow: listening
+            ? [
+                BoxShadow(
+                  color: fg.withValues(alpha: 0.55),
+                  blurRadius: 10,
+                  spreadRadius: 1,
                 ),
-          ),
-        ),
-      ],
+              ]
+            : null,
+      ),
     );
+    if (listening && !reduced) {
+      dot = dot
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .fade(begin: 0.55, end: 1, duration: 1100.ms);
+    }
+
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(999),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            dot,
+            const SizedBox(width: 10),
+            Icon(icon, size: 18, color: fg),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: fg,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+    });
   }
 }
+

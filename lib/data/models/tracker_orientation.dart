@@ -26,4 +26,15 @@ class TrackerOrientation {
     if (v is num) return v.toDouble();
     return double.tryParse(v.toString());
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TrackerOrientation &&
+        other.pitchDeg == pitchDeg &&
+        other.yawDeg == yawDeg &&
+        other.rollDeg == rollDeg;
+  }
+
+  @override
+  int get hashCode => Object.hash(pitchDeg, yawDeg, rollDeg);
 }

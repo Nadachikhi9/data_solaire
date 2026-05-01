@@ -17,6 +17,13 @@ abstract final class RtdbTrackerWriteKeys {
   static const String sun = 'sun';
   static const String isOptimal = 'is_optimal';
   static const String irradianceNormalized = 'irradiance_normalized';
+  static const String ldrQuadrants = 'ldr_quadrants';
+
+  /// Enfants habituels de [ldr_quadrants] (haut/bas/gauche/droite → capteurs LDR).
+  static const String ldrQTop = 'top';
+  static const String ldrQBottom = 'bottom';
+  static const String ldrQLeft = 'left';
+  static const String ldrQRight = 'right';
 
   // --- thresholds ---
   static const String thresholds = 'thresholds';
@@ -27,6 +34,8 @@ abstract final class RtdbTrackerWriteKeys {
   static const String ventilationOn = 'ventilation_on';
   static const String ldrLeftOk = 'ldr_left_ok';
   static const String ldrRightOk = 'ldr_right_ok';
+  static const String ldrTopOk = 'ldr_top_ok';
+  static const String ldrBottomOk = 'ldr_bottom_ok';
 
   // --- orientation ---
   static const String orientation = 'orientation';

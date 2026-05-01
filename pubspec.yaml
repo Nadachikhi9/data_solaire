@@ -17,8 +17,9 @@ dependencies:
   firebase_messaging: ^15.2.5
   flutter_local_notifications: ^19.5.0
   fl_chart: ^0.70.2
-  model_viewer_plus: ^1.9.2
   google_fonts: ^6.3.3
+  flutter_animate: ^4.5.2
+  vector_math: ^2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -27,5 +28,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/models/solar_tracker_lowpoly.glb

@@ -54,6 +54,16 @@ class DashboardController extends GetxController {
 
   final Queue<_PowerSample> _powerBuffer = Queue<_PowerSample>();
 
+  int? _powerChartEpochMs;
+  double _powerDataMaxX = 0;
+
+  /// Whether the chart view is pinned to the latest samples (user can pan away).
+  final RxBool chartFollowLatest = true.obs;
+
+  /// Visible X range in seconds since chart epoch ([_powerChartEpochMs]).
+  final RxDouble chartViewportMin = 0.0.obs;
+  final RxDouble chartViewportMax = 60.0.obs;
+
   final Rx<RtdbConnectionStatus> rtdbStatus =
       RtdbConnectionStatus.idle.obs;
   final RxnString rtdbError = RxnString();
@@ -61,8 +71,14 @@ class DashboardController extends GetxController {
   final RxnInt lastTelemetryUpdatedMs = RxnInt();
 
   static const int _staleMs = 5000;
+  /// Default visible window width when following live data.
   static const int _chartWindowMs = 60000;
-  static const int _maxChartPoints = 120;
+  /// Retain samples this long so the user can drag back (15 minutes).
+  static const int _retentionMs = 900000;
+  static const int _maxChartPoints = 2000;
+
+  /// Visible window width in seconds (constant scale on the time axis).
+  double get powerChartWindowSec => _chartWindowMs / 1000.0;
 
   @override
   void onInit() {
@@ -166,25 +182,82 @@ class DashboardController extends GetxController {
     while (_powerBuffer.length > _maxChartPoints) {
       _powerBuffer.removeFirst();
     }
-    final cutoff = nowMs - _chartWindowMs;
+    final cutoff = nowMs - _retentionMs;
     while (_powerBuffer.isNotEmpty && _powerBuffer.first.tMs < cutoff) {
       _powerBuffer.removeFirst();
     }
 
     if (_powerBuffer.isEmpty) return;
 
-    final start = _powerBuffer.first.tMs;
+    _powerChartEpochMs ??= _powerBuffer.first.tMs;
+    final epoch = _powerChartEpochMs!;
 
     final spots = <FlSpot>[];
     var maxY = 10.0;
     for (final s in _powerBuffer) {
-      final x = (s.tMs - start) / 1000.0;
+      final x = (s.tMs - epoch) / 1000.0;
       spots.add(FlSpot(x, s.power));
       if (s.power > maxY) maxY = s.power;
     }
 
+    _powerDataMaxX = spots.isEmpty ? 0 : spots.last.x;
+
+    if (chartFollowLatest.value) {
+      _applyFollowLatestViewport();
+    }
+
     chartMaxY.value = maxY * 1.15;
     powerSpots.assignAll(spots);
+  }
+
+  void _applyFollowLatestViewport() {
+    final w = powerChartWindowSec;
+    final dataMax = _powerDataMaxX;
+    final viewMax = dataMax < w ? w : dataMax;
+    var viewMin = viewMax - w;
+    if (viewMin < 0) viewMin = 0;
+    chartViewportMin.value = viewMin;
+    chartViewportMax.value = viewMax;
+  }
+
+  /// Horizontal drag in logical pixels; [plotWidthPx] is the plot area width.
+  void onPowerChartPan(double deltaPx, double plotWidthPx) {
+    if (plotWidthPx <= 0) return;
+    chartFollowLatest.value = false;
+    final span = chartViewportMax.value - chartViewportMin.value;
+    if (span <= 0) return;
+
+    final deltaSec = -deltaPx / plotWidthPx * span;
+    final maxRight = _powerDataMaxX < powerChartWindowSec
+        ? powerChartWindowSec
+        : _powerDataMaxX;
+
+    var newMin = chartViewportMin.value + deltaSec;
+    var newMax = chartViewportMax.value + deltaSec;
+
+    if (newMin < 0) {
+      newMax -= newMin;
+      newMin = 0;
+    }
+    if (newMax > maxRight) {
+      newMin -= newMax - maxRight;
+      newMax = maxRight;
+      if (newMin < 0) newMin = 0;
+    }
+
+    chartViewportMin.value = newMin;
+    chartViewportMax.value = newMax;
+
+    const snapSec = 0.35;
+    if (maxRight - newMax <= snapSec) {
+      chartFollowLatest.value = true;
+      _applyFollowLatestViewport();
+    }
+  }
+
+  void resetPowerChartToLive() {
+    chartFollowLatest.value = true;
+    _applyFollowLatestViewport();
   }
 
   void _reevaluateHealth({int? nowMs, TrackerRtdbState? state}) {

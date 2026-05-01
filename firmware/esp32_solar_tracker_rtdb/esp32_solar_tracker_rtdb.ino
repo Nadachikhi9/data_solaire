@@ -1,7 +1,8 @@
 /**
  * Data Solaire — ESP32 solar tracker firmware
  *
- * Merges LDR dual-axis tracking (SG90), INA219 (V/I/P), DHT22 + fan, optional I2C LCD,
+ * Merges quad-LDR dual-axis tracking — haut/bas → servo Y, gauche/droite → servo X (SG90),
+ * INA219 (V/I/P), DHT22 + fan, optional I2C LCD,
  * optional HTTP /data JSON, and Firebase Realtime Database updates under `tracker/` via **HTTPS REST
  * PATCH** (no Firebase Auth — requires open RTDB rules on `tracker`)
  * matching the Flutter app schema (see lib/core/constants/rtdb_tracker_write_keys.dart).
@@ -56,6 +57,11 @@ static const uint8_t kLcdAddr = 0x27;
 
 static const int kLdrTolerance = 40;
 static const int kServoStep = 3;
+// Butées logicielles servos (°). Ajustez selon la mécanique du panneau ; pas de balayage complet 0–180.
+static const int kServoXMin = 52;
+static const int kServoXMax = 128;
+static const int kServoYMin = 38;
+static const int kServoYMax = 142;
 static const float kFanOnTempC = 30.0f;
 static const int kLdrOkMin = 50;
 static const uint32_t kIntervalTrackingMs = 10;
@@ -73,8 +79,8 @@ WebServer server(80);
 #endif
 
 bool gIna219Ready = false;
-int gPosX = 90;
-int gPosY = 90;
+int gPosX = (kServoXMin + kServoXMax) / 2;
+int gPosY = (kServoYMin + kServoYMax) / 2;
 
 float gVoltage = 0;
 float gCurrentA = 0;
@@ -164,6 +170,17 @@ static bool rtdbPatchTrackerJson(const String& jsonBody) {
   return ok;
 }
 
+static float ldrQuadrantNormalized(int raw) {
+  int v = raw;
+  if (v < 0) {
+    v = 0;
+  }
+  if (v > 4095) {
+    v = 4095;
+  }
+  return (float)v / 4095.0f;
+}
+
 static void runTrackingOnce() {
   int vH = analogRead(kLdrH);
   int vB = analogRead(kLdrB);
@@ -171,20 +188,32 @@ static void runTrackingOnce() {
   int vD = analogRead(kLdrD);
 
   if (abs(vH - vB) > kLdrTolerance) {
-    if (vH > vB && gPosY < 180) {
+    if (vH > vB && gPosY < kServoYMax) {
       gPosY += kServoStep;
     }
-    if (vB > vH && gPosY > 0) {
+    if (vB > vH && gPosY > kServoYMin) {
       gPosY -= kServoStep;
+    }
+    if (gPosY < kServoYMin) {
+      gPosY = kServoYMin;
+    }
+    if (gPosY > kServoYMax) {
+      gPosY = kServoYMax;
     }
     servoY.write(gPosY);
   }
   if (abs(vG - vD) > kLdrTolerance) {
-    if (vG > vD && gPosX > 0) {
+    if (vG > vD && gPosX > kServoXMin) {
       gPosX -= kServoStep;
     }
-    if (vD > vG && gPosX < 180) {
+    if (vD > vG && gPosX < kServoXMax) {
       gPosX += kServoStep;
+    }
+    if (gPosX < kServoXMin) {
+      gPosX = kServoXMin;
+    }
+    if (gPosX > kServoXMax) {
+      gPosX = kServoXMax;
     }
     servoX.write(gPosX);
   }
@@ -288,6 +317,12 @@ static void pushTrackerToFirebase() {
 
   const bool ldrLeftOk = vG >= kLdrOkMin;
   const bool ldrRightOk = vD >= kLdrOkMin;
+  const bool ldrTopOk = vH >= kLdrOkMin;
+  const bool ldrBottomOk = vB >= kLdrOkMin;
+  const float lqTop = ldrQuadrantNormalized(vH);
+  const float lqBottom = ldrQuadrantNormalized(vB);
+  const float lqLeft = ldrQuadrantNormalized(vG);
+  const float lqRight = ldrQuadrantNormalized(vD);
   const int64_t ts = epochMsNow();
 
   bool fault = !gIna219Ready || !gDhtOk;
@@ -325,6 +360,12 @@ static void pushTrackerToFirebase() {
   body += "\"is_optimal\":";
   body += sunOpt ? "true" : "false";
   body += ",\"irradiance_normalized\":" + String(irr, 4);
+  body += ",\"ldr_quadrants\":{";
+  body += "\"top\":" + String(lqTop, 4);
+  body += ",\"bottom\":" + String(lqBottom, 4);
+  body += ",\"left\":" + String(lqLeft, 4);
+  body += ",\"right\":" + String(lqRight, 4);
+  body += "}";
   body += "}";
 
   body += ",\"thresholds\":{";
@@ -338,6 +379,10 @@ static void pushTrackerToFirebase() {
   body += ldrLeftOk ? "true" : "false";
   body += ",\"ldr_right_ok\":";
   body += ldrRightOk ? "true" : "false";
+  body += ",\"ldr_top_ok\":";
+  body += ldrTopOk ? "true" : "false";
+  body += ",\"ldr_bottom_ok\":";
+  body += ldrBottomOk ? "true" : "false";
   body += "}";
 
   body += ",\"orientation\":{";

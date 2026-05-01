@@ -9,18 +9,18 @@ import 'package:data_solaire/data/models/tracker_rtdb_state.dart';
 import 'package:data_solaire/data/services/mock_tracker_stream.dart';
 
 /// Accès Realtime Database — pas de logique métier.
-/// En mode mock ([useMock]), aucun appel Firebase pour la télémétrie.
+/// En mode mock ([useMock]), aucun accès à [FirebaseDatabase] (évite crash Web si Firebase non initialisé).
 class RtdbDataService {
   RtdbDataService({
     FirebaseDatabase? database,
     bool? useMock,
-  })  : _db = database ?? FirebaseDatabase.instance,
+  })  : _databaseOverride = database,
         useMock = useMock ?? FeatureFlags.useMockRealtimeData;
 
-  final FirebaseDatabase _db;
+  final FirebaseDatabase? _databaseOverride;
   final bool useMock;
 
-  /// Flux des données `tracker`. Ne propage pas d’erreur dans [map] ; les erreurs Firebase
+  /// Flux des données `tracker`. Ne propage pas d'erreur dans [map] ; les erreurs Firebase
   /// restent sur le stream natif (gérées par le controller avec [onError]).
   Stream<TrackerRtdbState> watchTracker() {
     if (useMock) {
@@ -31,7 +31,8 @@ class RtdbDataService {
       return Stream<TrackerRtdbState>.empty();
     }
 
-    final ref = _db.ref(RtdbPaths.trackerRoot);
+    final db = _databaseOverride ?? FirebaseDatabase.instance;
+    final ref = db.ref(RtdbPaths.trackerRoot);
     return ref.onValue.map((event) {
       try {
         final v = event.snapshot.value;

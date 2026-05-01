@@ -12,9 +12,13 @@ abstract final class AppStrings {
   static const String power = 'Puissance';
   static const String temperature = 'Température';
   static const String cleaningRequired = 'Nettoyage du panneau solaire requis';
-  static const String sensorIna219 = 'Capteur INA219';
-  static const String sensorDht11 = 'Capteur DHT11';
+  static const String sensorIna219 = 'Module INA219';
+  static const String sensorIna219Detail = 'Tension, courant, puissance';
+  static const String sensorDht11 = 'DHT11';
+  static const String sensorDht11Detail = 'Température';
   static const String ventilation = 'Ventilation';
+  static const String ldrTop = 'LDR haut';
+  static const String ldrBottom = 'LDR bas';
   static const String ldrLeft = 'LDR gauche';
   static const String ldrRight = 'LDR droite';
   static const String statusOk = 'OK';
@@ -29,6 +33,8 @@ abstract final class AppStrings {
   static const String fcmTokenEmpty = 'Jeton FCM vide — vérifiez le service worker Web et la clé VAPID.';
   static const String fcmDegradedBanner =
       'Notifications push limitées sur ce navigateur (Web). Les alertes en arrière-plan reposent sur le service worker et la configuration VAPID.';
+  static const String fcmSkippedNoFirebase =
+      'Notifications push désactivées : Firebase n’est pas initialisé (démo sans clés ou configuration en attente).';
 
   static const String rtdbFirebaseNotInitialized =
       'Firebase n’est pas initialisé : les données temps réel sont indisponibles.';
@@ -41,12 +47,9 @@ abstract final class AppStrings {
       'Aucun historique de puissance pour le moment.';
   static const String chartWaitingSerial =
       'Le graphique se remplira lorsque la puissance (W) arrivera depuis Firebase.';
-  static const String tracker3dUnavailable =
-      'Visualisation 3D indisponible sur cet appareil ou configuration.';
-  static const String tracker3dLoadError =
-      'Échec du chargement du modèle 3D.';
   static const String demoModeBanner =
       'Mode démonstration : données simulées. Désactivation : flutter run --dart-define=USE_MOCK_RTD=false';
   static const String tracker3dHint =
-      'Si la 3D ne s’affiche pas : WebGL, fichier GLB et performance du navigateur. Utilisez « Masquer la 3D » en cas de blocage.';
+      'Scène 3D perspective (rendu Canvas) : glisser pour orbiter la caméra. '
+      'Éclairage relié aux LDR / irradiance Firebase lorsque disponible.';
 }

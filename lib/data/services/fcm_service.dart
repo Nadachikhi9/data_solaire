@@ -9,14 +9,15 @@ import 'package:data_solaire/core/constants/app_strings.dart';
 import 'package:data_solaire/firebase_options.dart';
 
 /// FCM : topic (mobile), token, notifications locales Android. Ne lance aucune exception vers [main].
+/// Ne touche pas à [FirebaseMessaging.instance] tant qu’aucune app Firebase n’est initialisée (évite crash Web en démo).
 class FcmService extends GetxService {
   FcmService({
     FirebaseMessaging? messaging,
     FlutterLocalNotificationsPlugin? localNotifications,
-  })  : _messaging = messaging ?? FirebaseMessaging.instance,
+  })  : _messagingOverride = messaging,
         _local = localNotifications ?? FlutterLocalNotificationsPlugin();
 
-  final FirebaseMessaging _messaging;
+  final FirebaseMessaging? _messagingOverride;
   final FlutterLocalNotificationsPlugin _local;
   final AndroidNotificationChannel _androidChannel =
       const AndroidNotificationChannel(
@@ -33,6 +34,20 @@ class FcmService extends GetxService {
   final RxBool messagingAvailable = false.obs;
   final RxnString messagingLastError = RxnString();
 
+  /// Résout [FirebaseMessaging] uniquement si une app [Firebase] existe (injectable pour les tests).
+  FirebaseMessaging? _resolveMessaging() {
+    if (_messagingOverride != null) return _messagingOverride;
+    if (Firebase.apps.isEmpty) return null;
+    try {
+      return FirebaseMessaging.instance;
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('FCM _resolveMessaging: $e\n$st');
+      }
+      return null;
+    }
+  }
+
   /// init() historique — préférez [initSafe].
   Future<void> init() => initSafe();
 
@@ -40,8 +55,17 @@ class FcmService extends GetxService {
     messagingAvailable.value = false;
     messagingLastError.value = null;
 
+    final m = _resolveMessaging();
+    if (m == null) {
+      messagingLastError.value = AppStrings.fcmSkippedNoFirebase;
+      if (kDebugMode) {
+        debugPrint('FCM : aucune app Firebase — init ignorée.');
+      }
+      return;
+    }
+
     try {
-      await _messaging.setAutoInitEnabled(true);
+      await m.setAutoInitEnabled(true);
     } catch (e, st) {
       _recordError('FCM setAutoInitEnabled : $e', st);
       return;
@@ -49,7 +73,7 @@ class FcmService extends GetxService {
 
     NotificationSettings? settings;
     try {
-      settings = await _messaging.requestPermission(
+      settings = await m.requestPermission(
         alert: true,
         badge: true,
         sound: true,
@@ -80,7 +104,7 @@ class FcmService extends GetxService {
 
       if (!kIsWeb) {
         try {
-          await _messaging.subscribeToTopic(AppStrings.fcmTopic);
+          await m.subscribeToTopic(AppStrings.fcmTopic);
           if (kDebugMode) {
             debugPrint('FCM abonné au topic ${AppStrings.fcmTopic}');
           }
@@ -101,7 +125,7 @@ class FcmService extends GetxService {
       }
 
       try {
-        final token = await _messaging.getToken();
+        final token = await m.getToken();
         if (token != null && token.isNotEmpty) {
           messagingAvailable.value = true;
           messagingLastError.value = null;
