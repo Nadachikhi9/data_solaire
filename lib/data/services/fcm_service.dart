@@ -1,0 +1,186 @@
+import 'dart:async';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:get/get.dart';
+import 'package:data_solaire/core/constants/app_strings.dart';
+import 'package:data_solaire/firebase_options.dart';
+
+/// FCM : topic (mobile), token, notifications locales Android. Ne lance aucune exception vers [main].
+class FcmService extends GetxService {
+  FcmService({
+    FirebaseMessaging? messaging,
+    FlutterLocalNotificationsPlugin? localNotifications,
+  })  : _messaging = messaging ?? FirebaseMessaging.instance,
+        _local = localNotifications ?? FlutterLocalNotificationsPlugin();
+
+  final FirebaseMessaging _messaging;
+  final FlutterLocalNotificationsPlugin _local;
+  final AndroidNotificationChannel _androidChannel =
+      const AndroidNotificationChannel(
+    AppStrings.notificationChannel,
+    AppStrings.notificationChannelTitle,
+    description: 'Notifications de pannes et alertes tracker solaire.',
+    importance: Importance.high,
+  );
+
+  bool _localReady = false;
+  StreamSubscription<RemoteMessage>? _onMessageSub;
+
+  /// Indique si un token FCM a été obtenu (utile push ; sur Web dépend du SW + VAPID).
+  final RxBool messagingAvailable = false.obs;
+  final RxnString messagingLastError = RxnString();
+
+  /// init() historique — préférez [initSafe].
+  Future<void> init() => initSafe();
+
+  Future<void> initSafe() async {
+    messagingAvailable.value = false;
+    messagingLastError.value = null;
+
+    try {
+      await _messaging.setAutoInitEnabled(true);
+    } catch (e, st) {
+      _recordError('FCM setAutoInitEnabled : $e', st);
+      return;
+    }
+
+    NotificationSettings? settings;
+    try {
+      settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } catch (e, st) {
+      _recordError('FCM requestPermission : $e', st);
+      return;
+    }
+
+    if (kDebugMode) {
+      debugPrint('FCM permission: ${settings.authorizationStatus}');
+    }
+
+    try {
+      if (!kIsWeb) {
+        await _initLocalNotifications();
+      }
+
+      await _onMessageSub?.cancel();
+      _onMessageSub = FirebaseMessaging.onMessage.listen(
+        _onForegroundMessage,
+        onError: (e, st) {
+          if (kDebugMode) {
+            debugPrint('FCM onMessage stream: $e\n$st');
+          }
+        },
+      );
+
+      if (!kIsWeb) {
+        try {
+          await _messaging.subscribeToTopic(AppStrings.fcmTopic);
+          if (kDebugMode) {
+            debugPrint('FCM abonné au topic ${AppStrings.fcmTopic}');
+          }
+        } catch (e, st) {
+          if (kDebugMode) {
+            debugPrint('FCM subscribeToTopic : $e\n$st');
+          }
+          messagingLastError.value =
+              'Abonnement topic impossible : $e';
+        }
+      } else {
+        if (kDebugMode) {
+          debugPrint(
+            'FCM Web : subscribeToTopic non supporté par le plugin ; '
+            'voir documentation Firebase pour les topics côté JS ou envoi par token.',
+          );
+        }
+      }
+
+      try {
+        final token = await _messaging.getToken();
+        if (token != null && token.isNotEmpty) {
+          messagingAvailable.value = true;
+          messagingLastError.value = null;
+        } else {
+          messagingLastError.value = AppStrings.fcmTokenEmpty;
+        }
+        if (kDebugMode) {
+          debugPrint('FCM token: $token');
+        }
+      } catch (e, st) {
+        _recordError('FCM getToken : $e', st);
+      }
+    } catch (e, st) {
+      _recordError('FCM init interne : $e', st);
+    }
+  }
+
+  void _recordError(String message, StackTrace st) {
+    messagingLastError.value = message;
+    messagingAvailable.value = false;
+    if (kDebugMode) {
+      debugPrint('$message\n$st');
+    }
+  }
+
+  Future<void> _initLocalNotifications() async {
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidInit);
+    await _local.initialize(initSettings);
+
+    final android = _local.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await android?.createNotificationChannel(_androidChannel);
+    _localReady = true;
+  }
+
+  Future<void> _onForegroundMessage(RemoteMessage message) async {
+    if (kIsWeb || !_localReady) return;
+
+    final title =
+        message.notification?.title ?? message.data['title'] ?? 'Alerte';
+    final body = message.notification?.body ??
+        message.data['body'] ??
+        message.data['message'] ??
+        '';
+
+    try {
+      await _local.show(
+        message.hashCode,
+        title,
+        body.isEmpty ? null : body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _androidChannel.id,
+            _androidChannel.name,
+            channelDescription: _androidChannel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+        ),
+      );
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('Notification locale : $e\n$st');
+      }
+    }
+  }
+
+  @override
+  void onClose() {
+    unawaited(_onMessageSub?.cancel() ?? Future<void>.value());
+    super.onClose();
+  }
+}
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (kDebugMode) {
+    debugPrint('FCM background: ${message.messageId} ${message.data}');
+  }
+}

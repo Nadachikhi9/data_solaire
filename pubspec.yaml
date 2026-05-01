@@ -1,0 +1,31 @@
+name: data_solaire
+description: "Surveillance en temps réel du tracker solaire intelligent."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.8
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  get: ^4.7.3
+  firebase_core: ^3.13.0
+  firebase_database: ^11.3.5
+  firebase_messaging: ^15.2.5
+  flutter_local_notifications: ^19.5.0
+  fl_chart: ^0.70.2
+  model_viewer_plus: ^1.9.2
+  google_fonts: ^6.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/models/solar_tracker_lowpoly.glb
