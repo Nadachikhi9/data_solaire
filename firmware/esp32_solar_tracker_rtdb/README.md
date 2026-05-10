@@ -42,16 +42,26 @@ Ce firmware envoie les mesures et l’orientation vers la base **Realtime Databa
 
 4. Carte : **ESP32** (Arduino core Espressif 2.x ou 3.x).
 
-## Câblage (défaut dans le `.ino`)
+## Organisation du code
+
+Le firmware est découpé en deux modules indépendants :
+
+- **`hardware.cpp` / `hardware.h`** — broches, capteurs (LDR, INA219, DHT22), servos, ventilateur et écran LCD. Aucune référence Wi-Fi / Firebase.
+- **`cloud.cpp` / `cloud.h`** — Wi-Fi, NTP, PATCH REST vers Firebase RTDB et endpoint HTTP local `/data`. Aucune référence aux broches.
+- **`esp32_solar_tracker_rtdb.ino`** — orchestrateur minimal : appelle `hwSetup() / cloudSetup()` puis `hwLoop() / cloudServeHttp() / cloudPushTracker()` à la bonne cadence.
+
+Les globales partagées (tension, courant, puissance, température, LDR, statut soleil, défauts) sont exportées par `hardware.h` ; `cloud.cpp` les lit pour construire le JSON.
+
+## Câblage (défaut dans `hardware.h`)
 
 | Fonction   | GPIO |
 |-----------|------|
-| Servo X   | 18   |
-| Servo Y   | 19   |
-| LDR Haut / Bas / Gauche / Droite | 32, 33, 34, 35 |
-| DHT22     | 27   |
-| Ventilateur | 5  |
-| I2C SDA / SCL | 21 / 22 (INA219 + LCD) |
+| Servo X (continu) | 18 |
+| Servo Y (continu) | 19 |
+| LDR Haut-Gauche / Haut-Droite / Bas-Gauche / Bas-Droite | 34 / 32 / 35 / 33 |
+| DHT22 | 4 |
+| Ventilateur | 5 |
+| I2C SDA / SCL | 21 / 22 (INA219 + LCD, broches Wire par défaut) |
 
 Vérifiez la **feuille ADC** de votre module (certaines broches sont entrée seulement).
 
