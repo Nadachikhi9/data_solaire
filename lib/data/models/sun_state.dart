@@ -2,12 +2,7 @@ import 'package:flutter/foundation.dart';
 
 @immutable
 class LdrQuadrants {
-  const LdrQuadrants({
-    this.top,
-    this.bottom,
-    this.left,
-    this.right,
-  });
+  const LdrQuadrants({this.top, this.bottom, this.left, this.right});
 
   final double? top;
   final double? bottom;

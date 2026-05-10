@@ -1,11 +1,11 @@
 {
-    "name": "data_solaire",
-    "short_name": "data_solaire",
+    "name": "Data Solaire",
+    "short_name": "Data Solaire",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B1220",
+    "theme_color": "#F5B942",
+    "description": "Surveillance en temps réel du tracker solaire intelligent.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -36,9 +36,9 @@ class HealthDiagnosticsWidget extends GetView<DashboardController> {
           ],
           Text(
             'Indicateurs',
-            style: AppTheme.labelInstrument(context).copyWith(
-              color: AppTheme.onSurface,
-            ),
+            style: AppTheme.labelInstrument(
+              context,
+            ).copyWith(color: AppTheme.onSurface),
           ),
           const SizedBox(height: 10),
           if (cleaning) ...[
@@ -65,17 +65,17 @@ class HealthDiagnosticsWidget extends GetView<DashboardController> {
           ] else ...[
             Text(
               'Aucune alerte de nettoyage détectée.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.onMuted,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppTheme.onMuted),
             ),
             const SizedBox(height: 14),
           ],
           Text(
             'Capteurs',
-            style: AppTheme.labelInstrument(context).copyWith(
-              color: AppTheme.onSurface,
-            ),
+            style: AppTheme.labelInstrument(
+              context,
+            ).copyWith(color: AppTheme.onSurface),
           ),
           const SizedBox(height: 10),
           _CapteurDeviceRow(
@@ -103,8 +103,11 @@ class HealthDiagnosticsWidget extends GetView<DashboardController> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.error_outline_rounded,
-                        color: AppTheme.danger, size: 22),
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: AppTheme.danger,
+                      size: 22,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -119,53 +122,37 @@ class HealthDiagnosticsWidget extends GetView<DashboardController> {
                 ),
               ),
           const SizedBox(height: 6),
-          _AuxRow(
-            label: AppStrings.ldrTop,
-            ok: aux.ldrTopOk == true,
-          ),
-          _AuxRow(
-            label: AppStrings.ldrBottom,
-            ok: aux.ldrBottomOk == true,
-          ),
-          _AuxRow(
-            label: AppStrings.ldrLeft,
-            ok: aux.ldrLeftOk == true,
-          ),
-          _AuxRow(
-            label: AppStrings.ldrRight,
-            ok: aux.ldrRightOk == true,
-          ),
-          _AuxRow(
-            label: AppStrings.ventilation,
-            ok: aux.ventilationOn == true,
-          ),
+          _AuxRow(label: AppStrings.ldrTop, ok: aux.ldrTopOk == true),
+          _AuxRow(label: AppStrings.ldrBottom, ok: aux.ldrBottomOk == true),
+          _AuxRow(label: AppStrings.ldrLeft, ok: aux.ldrLeftOk == true),
+          _AuxRow(label: AppStrings.ldrRight, ok: aux.ldrRightOk == true),
+          _AuxRow(label: AppStrings.ventilation, ok: aux.ventilationOn == true),
         ],
       );
 
-      final shell = Container(
-        decoration: AppTheme.bentoDecoration(),
-        clipBehavior: Clip.hardEdge,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-          child: fillVertical
-              ? SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: inner,
-                )
-              : inner,
-        ),
-      )
-          .animate()
-          .fadeIn(duration: 420.ms, delay: 40.ms)
-          .slideY(begin: 0.04, curve: Curves.easeOutCubic);
+      final shell =
+          Container(
+                decoration: AppTheme.bentoDecoration(),
+                clipBehavior: Clip.hardEdge,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                  child: fillVertical
+                      ? SingleChildScrollView(
+                          physics: const ClampingScrollPhysics(),
+                          child: inner,
+                        )
+                      : inner,
+                ),
+              )
+              .animate()
+              .fadeIn(duration: 420.ms, delay: 40.ms)
+              .slideY(begin: 0.04, curve: Curves.easeOutCubic);
 
       if (!fillVertical) return shell;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: shell),
-        ],
+        children: [Expanded(child: shell)],
       );
     });
   }
@@ -212,18 +199,15 @@ class _CapteurDeviceRow extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    height: 1.35,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(height: 1.35),
             ),
           ),
           const SizedBox(width: 10),
           Text(
             status,
-            style: TextStyle(
-              color: col,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(color: col, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -269,18 +253,15 @@ class _StatusBanner extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w800, color: color),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.onMuted,
-                        height: 1.35,
-                      ),
+                    color: AppTheme.onMuted,
+                    height: 1.35,
+                  ),
                 ),
               ],
             ),
@@ -304,7 +285,9 @@ class _AuxRow extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            ok ? Icons.check_circle_outline_rounded : Icons.help_outline_rounded,
+            ok
+                ? Icons.check_circle_outline_rounded
+                : Icons.help_outline_rounded,
             color: ok ? AppTheme.success : AppTheme.warning,
             size: 22,
           ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -66,35 +67,51 @@ Future<void> main() async {
   }
 
   if (!kIsWeb && Firebase.apps.isNotEmpty) {
-    FirebaseMessaging.onBackgroundMessage(
-      firebaseMessagingBackgroundHandler,
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  }
+
+  Get.put(RtdbDataService(useMock: useMock), permanent: true);
+
+  final fcm = FcmService();
+  Get.put(fcm, permanent: true);
+  if (Firebase.apps.isEmpty && kDebugMode) {
+    debugPrint(
+      'FCM non initialisé : aucune app Firebase (mode démo ou échec).',
     );
   }
 
-  Get.put(
-    RtdbDataService(useMock: useMock),
-    permanent: true,
-  );
+  runApp(const DataSolaireApp());
+}
 
-  final fcm = FcmService();
-  if (Firebase.apps.isNotEmpty) {
+class DataSolaireApp extends StatefulWidget {
+  const DataSolaireApp({super.key});
+
+  @override
+  State<DataSolaireApp> createState() => _DataSolaireAppState();
+}
+
+class _DataSolaireAppState extends State<DataSolaireApp> {
+  @override
+  void initState() {
+    super.initState();
+    // FCM requestPermission() needs an Android Activity — absent before first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_initFcmWhenActivityReady());
+    });
+  }
+
+  Future<void> _initFcmWhenActivityReady() async {
+    if (Firebase.apps.isEmpty || !Get.isRegistered<FcmService>()) {
+      return;
+    }
     try {
-      await fcm.initSafe();
+      await Get.find<FcmService>().initSafe();
     } catch (e, st) {
       if (kDebugMode) {
         debugPrint('FcmService.initSafe inattendu: $e\n$st');
       }
     }
-  } else if (kDebugMode) {
-    debugPrint('FCM non initialisé : aucune app Firebase (mode démo ou échec).');
   }
-  Get.put(fcm, permanent: true);
-
-  runApp(const DataSolaireApp());
-}
-
-class DataSolaireApp extends StatelessWidget {
-  const DataSolaireApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -146,10 +163,7 @@ class DataSolaireApp extends StatelessWidget {
             );
           }
 
-          return Directionality(
-            textDirection: TextDirection.ltr,
-            child: body,
-          );
+          return Directionality(textDirection: TextDirection.ltr, child: body);
         });
       },
     );

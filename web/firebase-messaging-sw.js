@@ -10,9 +10,11 @@ importScripts('https://www.gstatic.com/firebasejs/11.0.2/firebase-messaging-comp
 
 firebase.initializeApp({
   apiKey: 'REPLACE_WEB_API_KEY',
-  authDomain: 'REPLACE_PROJECT_ID.firebaseapp.com',
-  projectId: 'REPLACE_PROJECT_ID',
-  storageBucket: 'REPLACE_PROJECT_ID.firebasestorage.app',
+  authDomain: 'datasolaire-e6696.firebaseapp.com',
+  projectId: 'datasolaire-e6696',
+  databaseURL:
+    'https://datasolaire-e6696-default-rtdb.europe-west1.firebasedatabase.app',
+  storageBucket: 'datasolaire-e6696.firebasestorage.app',
   messagingSenderId: 'REPLACE_SENDER_ID',
   appId: 'REPLACE_WEB_APP_ID',
 });

@@ -11,11 +11,9 @@ import 'package:data_solaire/data/services/mock_tracker_stream.dart';
 /// Accès Realtime Database — pas de logique métier.
 /// En mode mock ([useMock]), aucun accès à [FirebaseDatabase] (évite crash Web si Firebase non initialisé).
 class RtdbDataService {
-  RtdbDataService({
-    FirebaseDatabase? database,
-    bool? useMock,
-  })  : _databaseOverride = database,
-        useMock = useMock ?? FeatureFlags.useMockRealtimeData;
+  RtdbDataService({FirebaseDatabase? database, bool? useMock})
+    : _databaseOverride = database,
+      useMock = useMock ?? FeatureFlags.useMockRealtimeData;
 
   final FirebaseDatabase? _databaseOverride;
   final bool useMock;

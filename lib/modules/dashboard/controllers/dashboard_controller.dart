@@ -6,11 +6,13 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:data_solaire/core/app_runtime_state.dart';
 import 'package:data_solaire/core/constants/app_strings.dart';
+import 'package:data_solaire/core/feature_flags.dart';
 import 'package:data_solaire/data/models/aux_state.dart';
 import 'package:data_solaire/data/models/rtdb_connection_status.dart';
 import 'package:data_solaire/data/models/sun_state.dart';
 import 'package:data_solaire/data/models/tracker_orientation.dart';
 import 'package:data_solaire/data/models/tracker_rtdb_state.dart';
+import 'package:data_solaire/data/services/fcm_service.dart';
 import 'package:data_solaire/data/services/rtdb_data_service.dart';
 
 class _PowerSample {
@@ -23,7 +25,7 @@ class _PowerSample {
 /// Logique métier : pannes, buffer graphique, heartbeat.
 class DashboardController extends GetxController {
   DashboardController({RtdbDataService? dataService})
-      : _data = dataService ?? Get.find<RtdbDataService>();
+    : _data = dataService ?? Get.find<RtdbDataService>();
 
   final RtdbDataService _data;
   StreamSubscription<TrackerRtdbState>? _sub;
@@ -31,6 +33,12 @@ class DashboardController extends GetxController {
   Timer? _rtdbReconnectTimer;
   TrackerRtdbState? _latestState;
   int _rtdbRetryCount = 0;
+
+  bool _mockAlertPrevOffline = false;
+  bool _mockAlertPrevCleaning = false;
+  int _mockAlertPrevFaultCount = 0;
+  bool _mockAlertPrevFwFault = false;
+  bool _mockAlertPrevLdrAllOk = true;
 
   static const int _maxRtdbRetries = 120;
 
@@ -64,15 +72,16 @@ class DashboardController extends GetxController {
   final RxDouble chartViewportMin = 0.0.obs;
   final RxDouble chartViewportMax = 60.0.obs;
 
-  final Rx<RtdbConnectionStatus> rtdbStatus =
-      RtdbConnectionStatus.idle.obs;
+  final Rx<RtdbConnectionStatus> rtdbStatus = RtdbConnectionStatus.idle.obs;
   final RxnString rtdbError = RxnString();
   final RxBool rtdbStreamStarted = false.obs;
   final RxnInt lastTelemetryUpdatedMs = RxnInt();
 
   static const int _staleMs = 5000;
+
   /// Default visible window width when following live data.
   static const int _chartWindowMs = 60000;
+
   /// Retain samples this long so the user can drag back (15 minutes).
   static const int _retentionMs = 900000;
   static const int _maxChartPoints = 2000;
@@ -175,6 +184,7 @@ class DashboardController extends GetxController {
     }
 
     _reevaluateHealth(nowMs: now, state: state);
+    _fireMockAlertEdgesIfNeeded(state);
   }
 
   void _appendPowerSample(int nowMs, double p) {
@@ -273,9 +283,80 @@ class DashboardController extends GetxController {
     cleaningAlert.value = cleaning.$1;
     cleaningSeverity.value = cleaning.$2;
 
-    sensorFaultMessages.assignAll(
-      _computeSensorFaults(snapshot, offline, now),
-    );
+    sensorFaultMessages.assignAll(_computeSensorFaults(snapshot, offline, now));
+  }
+
+  void _fireMockAlertEdgesIfNeeded(TrackerRtdbState state) {
+    if (!FeatureFlags.useMockRealtimeData ||
+        !FeatureFlags.mockAlertNotifications) {
+      return;
+    }
+    if (!Get.isRegistered<FcmService>()) {
+      return;
+    }
+    final fcm = Get.find<FcmService>();
+    final demoTitle = '${AppStrings.appTitle} (démo)';
+
+    final offline = systemOffline.value;
+    final cleaning = cleaningAlert.value;
+    final faultCount = sensorFaultMessages.length;
+    final fw = state.fault;
+    final fwFault = fw?.hasError == true;
+
+    final a = state.aux;
+    final ldrAllOk =
+        a.ldrTopOk != false &&
+        a.ldrBottomOk != false &&
+        a.ldrLeftOk != false &&
+        a.ldrRightOk != false;
+
+    if (offline && !_mockAlertPrevOffline) {
+      unawaited(
+        fcm.showDiagnosticForegroundAlert(
+          title: demoTitle,
+          body: AppStrings.offlineTitle,
+        ),
+      );
+    }
+    if (cleaning && !_mockAlertPrevCleaning) {
+      unawaited(
+        fcm.showDiagnosticForegroundAlert(
+          title: demoTitle,
+          body: AppStrings.cleaningRequired,
+        ),
+      );
+    }
+    if (faultCount > 0 && _mockAlertPrevFaultCount == 0) {
+      final msg = sensorFaultMessages.isEmpty
+          ? AppStrings.sensorIna219
+          : sensorFaultMessages.first;
+      unawaited(fcm.showDiagnosticForegroundAlert(title: demoTitle, body: msg));
+    }
+    if (fwFault && !_mockAlertPrevFwFault) {
+      final detail = fw!;
+      unawaited(
+        fcm.showDiagnosticForegroundAlert(
+          title: demoTitle,
+          body:
+              detail.message ??
+              '${AppStrings.statusFault} (${detail.code ?? '?'})',
+        ),
+      );
+    }
+    if (!ldrAllOk && _mockAlertPrevLdrAllOk) {
+      unawaited(
+        fcm.showDiagnosticForegroundAlert(
+          title: demoTitle,
+          body: 'Quelques luminosités quadrant LDR hors plage attendue (mock).',
+        ),
+      );
+    }
+
+    _mockAlertPrevOffline = offline;
+    _mockAlertPrevCleaning = cleaning;
+    _mockAlertPrevFaultCount = faultCount;
+    _mockAlertPrevFwFault = fwFault;
+    _mockAlertPrevLdrAllOk = ldrAllOk;
   }
 
   (bool, double) _computeCleaningAlert(
@@ -288,7 +369,8 @@ class DashboardController extends GetxController {
     final p = t.power;
     if (p == null) return (false, 0.0);
 
-    final sunOptimal = state.sun.isOptimal == true ||
+    final sunOptimal =
+        state.sun.isOptimal == true ||
         (state.sun.irradianceNormalized != null &&
             state.sun.irradianceNormalized! >= 0.75);
     if (!sunOptimal) return (false, 0.0);
@@ -315,7 +397,8 @@ class DashboardController extends GetxController {
     final pMs = t.powerUpdatedMs ?? t.lastUpdatedMs;
     final tempMs = t.temperatureUpdatedMs ?? t.lastUpdatedMs;
 
-    final ina219Bad = _staleOrNull(t.voltage, vMs, now) ||
+    final ina219Bad =
+        _staleOrNull(t.voltage, vMs, now) ||
         _staleOrNull(t.current, iMs, now) ||
         _staleOrNull(t.power, pMs, now);
 

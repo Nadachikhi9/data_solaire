@@ -3,7 +3,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 bool motionReduced(BuildContext context) {
   if (MediaQuery.disableAnimationsOf(context)) return true;
-  return WidgetsBinding.instance.platformDispatcher.accessibilityFeatures
+  return WidgetsBinding
+      .instance
+      .platformDispatcher
+      .accessibilityFeatures
       .disableAnimations;
 }
 
@@ -30,10 +33,8 @@ extension HeliosMotion on Widget {
     Duration period = const Duration(milliseconds: 2400),
   }) {
     if (motionReduced(context)) return this;
-    return animate(onPlay: (c) => c.repeat()).shimmer(
-      delay: 400.ms,
-      duration: period,
-      color: Colors.white24,
-    );
+    return animate(
+      onPlay: (c) => c.repeat(),
+    ).shimmer(delay: 400.ms, duration: period, color: Colors.white24);
   }
 }

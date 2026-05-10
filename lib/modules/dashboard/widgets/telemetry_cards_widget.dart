@@ -18,7 +18,8 @@ class TelemetryCardsWidget extends GetView<DashboardController> {
   Widget build(BuildContext context) {
     return Obx(() {
       final hubMs = controller.lastTelemetryUpdatedMs.value;
-      final awaiting = hubMs == null &&
+      final awaiting =
+          hubMs == null &&
           !controller.systemOffline.value &&
           controller.rtdbStatus.value != RtdbConnectionStatus.error;
 
@@ -59,15 +60,11 @@ class TelemetryCardsWidget extends GetView<DashboardController> {
           if (!w.isFinite || w <= 0) {
             w = MediaQuery.sizeOf(context).width;
           }
-          final count = w >= 900
-              ? 4
-              : w >= 520
-                  ? 2
-                  : 1;
-          final tileW = count == 1
-              ? w
-              : (w - 14 * (count - 1)) / count;
-          final safeTileW = tileW.isFinite ? tileW.clamp(120.0, w) : 160.0;
+          // Always use at least 2 columns so phones get a 2×2 grid (not four full-width tiles).
+          final count = w >= 900 ? 4 : 2;
+          final tileW = (w - 14 * (count - 1)) / count;
+          final safeTileW =
+              tileW.isFinite && tileW > 0 ? tileW : (w > 0 ? w / 2 : 160.0);
           return Wrap(
             spacing: 14,
             runSpacing: 14,
@@ -111,10 +108,7 @@ class TelemetryCardsWidget extends GetView<DashboardController> {
             const SizedBox(height: 14),
           ],
           Expanded(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: wrap,
-            ),
+            child: Align(alignment: Alignment.topCenter, child: wrap),
           ),
         ],
       );
@@ -139,9 +133,9 @@ class _InfoPill extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.onMuted,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppTheme.onMuted),
             ),
           ),
         ],
@@ -203,9 +197,9 @@ class _MetricTile extends StatelessWidget {
                   Text(
                     unit,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: AppTheme.onMuted,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      color: AppTheme.onMuted,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),

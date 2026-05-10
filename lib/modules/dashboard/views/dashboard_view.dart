@@ -54,7 +54,9 @@ class DashboardView extends GetView<DashboardController> {
                         context,
                         index: 2,
                         title: AppStrings.diagnosticsSection,
-                        child: const HealthDiagnosticsWidget(fillVertical: false),
+                        child: const HealthDiagnosticsWidget(
+                          fillVertical: false,
+                        ),
                       );
                       final chart = _section(
                         context,
@@ -85,7 +87,8 @@ class DashboardView extends GetView<DashboardController> {
                                       index: 1,
                                       title: AppStrings.telemetrySection,
                                       child: const TelemetryCardsWidget(
-                                          fillVertical: false),
+                                        fillVertical: false,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 20),
@@ -94,11 +97,10 @@ class DashboardView extends GetView<DashboardController> {
                                     child: _section(
                                       context,
                                       index: 2,
-                                      title:
-                                          AppStrings.diagnosticsSection,
-                                      child:
-                                          const HealthDiagnosticsWidget(
-                                              fillVertical: false),
+                                      title: AppStrings.diagnosticsSection,
+                                      child: const HealthDiagnosticsWidget(
+                                        fillVertical: false,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -112,10 +114,10 @@ class DashboardView extends GetView<DashboardController> {
                                     child: _section(
                                       context,
                                       index: 3,
-                                      title:
-                                          AppStrings.performanceSection,
+                                      title: AppStrings.performanceSection,
                                       child: const PowerChartWidget(
-                                          fillVertical: false),
+                                        fillVertical: false,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 20),
@@ -125,8 +127,9 @@ class DashboardView extends GetView<DashboardController> {
                                       context,
                                       index: 4,
                                       title: AppStrings.tracker3dSection,
-                                      child:
-                                          const Tracker3dWidget(fillVertical: false),
+                                      child: const Tracker3dWidget(
+                                        fillVertical: false,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -151,7 +154,8 @@ class DashboardView extends GetView<DashboardController> {
                                       index: 1,
                                       title: AppStrings.telemetrySection,
                                       child: const TelemetryCardsWidget(
-                                          fillVertical: false),
+                                        fillVertical: false,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 20),
@@ -159,11 +163,10 @@ class DashboardView extends GetView<DashboardController> {
                                     child: _section(
                                       context,
                                       index: 2,
-                                      title:
-                                          AppStrings.diagnosticsSection,
-                                      child:
-                                          const HealthDiagnosticsWidget(
-                                              fillVertical: false),
+                                      title: AppStrings.diagnosticsSection,
+                                      child: const HealthDiagnosticsWidget(
+                                        fillVertical: false,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -231,10 +234,9 @@ class DashboardView extends GetView<DashboardController> {
               const SizedBox(width: 12),
               Text(
                 title.toUpperCase(),
-                style: AppTheme.labelInstrument(context).copyWith(
-                  color: AppTheme.onSurface,
-                  letterSpacing: 1.1,
-                ),
+                style: AppTheme.labelInstrument(
+                  context,
+                ).copyWith(color: AppTheme.onSurface, letterSpacing: 1.1),
               ),
             ],
           ),
@@ -313,18 +315,18 @@ class _HeroHeader extends StatelessWidget {
                 Text(
                   AppStrings.dashboardTitle,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.onSurface,
-                        letterSpacing: -0.03,
-                      ),
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.onSurface,
+                    letterSpacing: -0.03,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   AppStrings.appSubtitle,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.onMuted,
-                        height: 1.4,
-                      ),
+                    color: AppTheme.onMuted,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -415,79 +417,74 @@ class _RtdbLiveChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-    final status = controller.rtdbStatus.value;
-    final err = controller.rtdbError.value;
-    final listening = status == RtdbConnectionStatus.listening && err == null;
+      final status = controller.rtdbStatus.value;
+      final err = controller.rtdbError.value;
+      final listening = status == RtdbConnectionStatus.listening && err == null;
 
-    final Color fg;
-    final Color bg;
-    final IconData icon;
-    String label;
-    if (status == RtdbConnectionStatus.error || (err != null && err.isNotEmpty)) {
-      fg = AppTheme.danger;
-      bg = AppTheme.danger.withValues(alpha: 0.15);
-      icon = Icons.cloud_off_outlined;
-      label = 'RTDB';
-    } else if (listening) {
-      fg = AppTheme.teal;
-      bg = AppTheme.teal.withValues(alpha: 0.14);
-      icon = Icons.podcasts_rounded;
-      label = 'Flux temps réel';
-    } else {
-      fg = AppTheme.warning;
-      bg = AppTheme.warning.withValues(alpha: 0.14);
-      icon = Icons.hourglass_top_rounded;
-      label = 'Connexion…';
-    }
+      final Color fg;
+      final Color bg;
+      final IconData icon;
+      final String tooltip;
+      if (status == RtdbConnectionStatus.error ||
+          (err != null && err.isNotEmpty)) {
+        fg = AppTheme.danger;
+        bg = AppTheme.danger.withValues(alpha: 0.15);
+        icon = Icons.cloud_off_outlined;
+        tooltip = (err != null && err.isNotEmpty) ? err : 'RTDB';
+      } else if (listening) {
+        fg = AppTheme.teal;
+        bg = AppTheme.teal.withValues(alpha: 0.14);
+        icon = Icons.podcasts_rounded;
+        tooltip = 'Flux temps réel';
+      } else {
+        fg = AppTheme.warning;
+        bg = AppTheme.warning.withValues(alpha: 0.14);
+        icon = Icons.hourglass_top_rounded;
+        tooltip = 'Connexion…';
+      }
 
-    final reduced = motionReduced(context);
-    Widget dot = Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: listening ? fg : fg.withValues(alpha: 0.85),
-        boxShadow: listening
-            ? [
-                BoxShadow(
-                  color: fg.withValues(alpha: 0.55),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
-      ),
-    );
-    if (listening && !reduced) {
-      dot = dot
-          .animate(onPlay: (c) => c.repeat(reverse: true))
-          .fade(begin: 0.55, end: 1, duration: 1100.ms);
-    }
-
-    return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(999),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            dot,
-            const SizedBox(width: 10),
-            Icon(icon, size: 18, color: fg),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w700,
+      final reduced = motionReduced(context);
+      Widget dot = Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: listening ? fg : fg.withValues(alpha: 0.85),
+          boxShadow: listening
+              ? [
+                  BoxShadow(
+                    color: fg.withValues(alpha: 0.55),
+                    blurRadius: 10,
+                    spreadRadius: 1,
                   ),
-            ),
-          ],
+                ]
+              : null,
         ),
-      ),
-    );
+      );
+      if (listening && !reduced) {
+        dot = dot
+            .animate(onPlay: (c) => c.repeat(reverse: true))
+            .fade(begin: 0.55, end: 1, duration: 1100.ms);
+      }
+
+      return Tooltip(
+        message: tooltip,
+        child: Material(
+          color: bg,
+          borderRadius: BorderRadius.circular(999),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                dot,
+                const SizedBox(width: 8),
+                Icon(icon, size: 18, color: fg),
+              ],
+            ),
+          ),
+        ),
+      );
     });
   }
 }
-

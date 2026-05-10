@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:data_solaire/core/constants/app_strings.dart';
 import 'package:data_solaire/firebase_options.dart';
+import 'package:data_solaire/util/browser_notify.dart';
 
 /// FCM : topic (mobile), token, notifications locales Android. Ne lance aucune exception vers [main].
 /// Ne touche pas à [FirebaseMessaging.instance] tant qu’aucune app Firebase n’est initialisée (évite crash Web en démo).
@@ -14,18 +15,18 @@ class FcmService extends GetxService {
   FcmService({
     FirebaseMessaging? messaging,
     FlutterLocalNotificationsPlugin? localNotifications,
-  })  : _messagingOverride = messaging,
-        _local = localNotifications ?? FlutterLocalNotificationsPlugin();
+  }) : _messagingOverride = messaging,
+       _local = localNotifications ?? FlutterLocalNotificationsPlugin();
 
   final FirebaseMessaging? _messagingOverride;
   final FlutterLocalNotificationsPlugin _local;
   final AndroidNotificationChannel _androidChannel =
       const AndroidNotificationChannel(
-    AppStrings.notificationChannel,
-    AppStrings.notificationChannelTitle,
-    description: 'Notifications de pannes et alertes tracker solaire.',
-    importance: Importance.high,
-  );
+        AppStrings.notificationChannel,
+        AppStrings.notificationChannelTitle,
+        description: 'Notifications de pannes et alertes tracker solaire.',
+        importance: Importance.high,
+      );
 
   bool _localReady = false;
   StreamSubscription<RemoteMessage>? _onMessageSub;
@@ -79,12 +80,15 @@ class FcmService extends GetxService {
         sound: true,
       );
     } catch (e, st) {
-      _recordError('FCM requestPermission : $e', st);
-      return;
+      // Souvent « Unable to detect current Android Activity » si trop tôt ; initSafe
+      // est rappelé après la première frame depuis [DataSolaireApp].
+      if (kDebugMode) {
+        debugPrint('FCM requestPermission : $e\n$st');
+      }
     }
 
     if (kDebugMode) {
-      debugPrint('FCM permission: ${settings.authorizationStatus}');
+      debugPrint('FCM permission: ${settings?.authorizationStatus}');
     }
 
     try {
@@ -112,8 +116,7 @@ class FcmService extends GetxService {
           if (kDebugMode) {
             debugPrint('FCM subscribeToTopic : $e\n$st');
           }
-          messagingLastError.value =
-              'Abonnement topic impossible : $e';
+          messagingLastError.value = 'Abonnement topic impossible : $e';
         }
       } else {
         if (kDebugMode) {
@@ -156,9 +159,12 @@ class FcmService extends GetxService {
     const initSettings = InitializationSettings(android: androidInit);
     await _local.initialize(initSettings);
 
-    final android = _local.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _local
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await android?.createNotificationChannel(_androidChannel);
+    await android?.requestNotificationsPermission();
     _localReady = true;
   }
 
@@ -167,7 +173,8 @@ class FcmService extends GetxService {
 
     final title =
         message.notification?.title ?? message.data['title'] ?? 'Alerte';
-    final body = message.notification?.body ??
+    final body =
+        message.notification?.body ??
         message.data['body'] ??
         message.data['message'] ??
         '';
@@ -194,6 +201,63 @@ class FcmService extends GetxService {
     }
   }
 
+  /// Alerte hors FCM — utile en **mode mock** (Chrome : API Notification après permission).
+  /// Sur Android initialise le plugin local si Firebase n’a pas encore tourné.
+  Future<void> showDiagnosticForegroundAlert({
+    required String title,
+    required String body,
+  }) async {
+    if (kDebugMode) {
+      debugPrint('Alerte diagnostics : $title — $body');
+    }
+    if (kIsWeb) {
+      await requestAndShowBrowserNotification(title, body);
+      return;
+    }
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+
+    await _ensureLocalNotificationsInitialized();
+    if (!_localReady) {
+      return;
+    }
+
+    try {
+      await _local.show(
+        title.hashCode ^ body.hashCode,
+        title,
+        body.isEmpty ? null : body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _androidChannel.id,
+            _androidChannel.name,
+            channelDescription: _androidChannel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+        ),
+      );
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('showDiagnosticForegroundAlert : $e\n$st');
+      }
+    }
+  }
+
+  Future<void> _ensureLocalNotificationsInitialized() async {
+    if (kIsWeb || _localReady) {
+      return;
+    }
+    try {
+      await _initLocalNotifications();
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('_ensureLocalNotificationsInitialized : $e\n$st');
+      }
+    }
+  }
+
   @override
   void onClose() {
     unawaited(_onMessageSub?.cancel() ?? Future<void>.value());
@@ -206,5 +270,62 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   if (kDebugMode) {
     debugPrint('FCM background: ${message.messageId} ${message.data}');
+  }
+
+  // Message « notification » : la barre d’état Android affiche déjà ; éviter doublon.
+  if (kIsWeb || message.notification != null) {
+    return;
+  }
+  if (defaultTargetPlatform != TargetPlatform.android) {
+    return;
+  }
+
+  final title =
+      message.data['title'] ?? message.notification?.title ?? 'Alerte';
+  final body =
+      message.data['body'] ??
+      message.data['message'] ??
+      message.notification?.body ??
+      '';
+  if (title.isEmpty && body.isEmpty) {
+    return;
+  }
+
+  final plugin = FlutterLocalNotificationsPlugin();
+  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+  await plugin.initialize(const InitializationSettings(android: androidInit));
+
+  final android = plugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
+  const channel = AndroidNotificationChannel(
+    AppStrings.notificationChannel,
+    AppStrings.notificationChannelTitle,
+    description: 'Notifications de pannes et alertes tracker solaire.',
+    importance: Importance.high,
+  );
+  await android?.createNotificationChannel(channel);
+
+  try {
+    final id = message.messageId?.hashCode ?? message.hashCode;
+    await plugin.show(
+      id,
+      title,
+      body.isEmpty ? null : body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          channel.id,
+          channel.name,
+          channelDescription: channel.description,
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+    );
+  } catch (e, st) {
+    if (kDebugMode) {
+      debugPrint('FCM background notification locale : $e\n$st');
+    }
   }
 }

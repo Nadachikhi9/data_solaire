@@ -25,12 +25,14 @@ abstract final class AppStrings {
   static const String statusFault = 'Panne';
   static const String statusUnknown = 'Inconnu';
   static const String offlineTitle = 'Connexion système perdue';
-  static const String offlineHint = 'Aucune donnée reçue depuis plus de 5 secondes.';
+  static const String offlineHint =
+      'Aucune donnée reçue depuis plus de 5 secondes.';
   static const String fcmTopic = 'solar_alerts';
   static const String notificationChannel = 'alertes_solaires';
   static const String notificationChannelTitle = 'Alertes solaires';
 
-  static const String fcmTokenEmpty = 'Jeton FCM vide — vérifiez le service worker Web et la clé VAPID.';
+  static const String fcmTokenEmpty =
+      'Jeton FCM vide — vérifiez le service worker Web et la clé VAPID.';
   static const String fcmDegradedBanner =
       'Notifications push limitées sur ce navigateur (Web). Les alertes en arrière-plan reposent sur le service worker et la configuration VAPID.';
   static const String fcmSkippedNoFirebase =
@@ -48,7 +50,9 @@ abstract final class AppStrings {
   static const String chartWaitingSerial =
       'Le graphique se remplira lorsque la puissance (W) arrivera depuis Firebase.';
   static const String demoModeBanner =
-      'Mode démonstration : données simulées. Désactivation : flutter run --dart-define=USE_MOCK_RTD=false';
+      'Données démo : scénarios périodiques (capteurs, perte liaison, « nettoyage », défaut équipement, LDR). '
+      'Pour les alertes hors app : autorisez les notifications du navigateur. '
+      'Couper les notifications : `--dart-define=MOCK_ALERT_NOTIF=false`.';
   static const String tracker3dHint =
       'Scène 3D perspective (rendu Canvas) : glisser pour orbiter la caméra. '
       'Éclairage relié aux LDR / irradiance Firebase lorsque disponible.';

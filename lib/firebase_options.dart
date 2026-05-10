@@ -1,11 +1,15 @@
-// Fichier généré manuellement : exécutez `dart run flutterfire_cli:flutterfire configure`
-// pour remplacer par les vraies valeurs du projet Firebase.
+// RTDB régional : projet `datasolaire-e6696`. Remplacez les clés/apiKey/appId par la console
+// ou `dart run flutterfire_cli:flutterfire configure` sur votre compte.
 //
 // ignore_for_file: lines_longer_than_80_chars
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+
+/// URL Realtime Database (europe-west1, hôte *.firebasedatabase.app).
+const _kFirebaseDatabaseUrl =
+    'https://datasolaire-e6696-default-rtdb.europe-west1.firebasedatabase.app';
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -28,28 +32,28 @@ class DefaultFirebaseOptions {
     apiKey: 'REPLACE_WEB_API_KEY',
     appId: 'REPLACE_WEB_APP_ID',
     messagingSenderId: 'REPLACE_SENDER_ID',
-    projectId: 'REPLACE_PROJECT_ID',
-    authDomain: 'REPLACE_PROJECT_ID.firebaseapp.com',
-    databaseURL: 'https://REPLACE_PROJECT_ID-default-rtdb.firebaseio.com',
-    storageBucket: 'REPLACE_PROJECT_ID.firebasestorage.app',
+    projectId: 'datasolaire-e6696',
+    authDomain: 'datasolaire-e6696.firebaseapp.com',
+    databaseURL: _kFirebaseDatabaseUrl,
+    storageBucket: 'datasolaire-e6696.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'REPLACE_ANDROID_API_KEY',
     appId: 'REPLACE_ANDROID_APP_ID',
     messagingSenderId: 'REPLACE_SENDER_ID',
-    projectId: 'REPLACE_PROJECT_ID',
-    databaseURL: 'https://REPLACE_PROJECT_ID-default-rtdb.firebaseio.com',
-    storageBucket: 'REPLACE_PROJECT_ID.firebasestorage.app',
+    projectId: 'datasolaire-e6696',
+    databaseURL: _kFirebaseDatabaseUrl,
+    storageBucket: 'datasolaire-e6696.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'REPLACE_IOS_API_KEY',
     appId: 'REPLACE_IOS_APP_ID',
     messagingSenderId: 'REPLACE_SENDER_ID',
-    projectId: 'REPLACE_PROJECT_ID',
-    databaseURL: 'https://REPLACE_PROJECT_ID-default-rtdb.firebaseio.com',
-    storageBucket: 'REPLACE_PROJECT_ID.firebasestorage.app',
+    projectId: 'datasolaire-e6696',
+    databaseURL: _kFirebaseDatabaseUrl,
+    storageBucket: 'datasolaire-e6696.firebasestorage.app',
     iosBundleId: 'com.example.dataSolaire',
   );
 }

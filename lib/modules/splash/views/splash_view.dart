@@ -25,26 +25,27 @@ class SplashView extends GetView<SplashController> {
                 _SunGlyph(animate: !reduced),
                 const SizedBox(height: 32),
                 Text(
-                  AppStrings.appTitle,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.onSurface,
-                        letterSpacing: -0.04,
-                      ),
-                  textAlign: TextAlign.center,
-                )
+                      AppStrings.appTitle,
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.onSurface,
+                            letterSpacing: -0.04,
+                          ),
+                      textAlign: TextAlign.center,
+                    )
                     .animate()
                     .fadeIn(duration: 500.ms, delay: 200.ms)
                     .slideY(begin: 0.05, curve: Curves.easeOutCubic),
                 const SizedBox(height: 10),
                 Text(
-                  AppStrings.appSubtitle,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      AppStrings.appSubtitle,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppTheme.onMuted,
                         height: 1.35,
                       ),
-                  textAlign: TextAlign.center,
-                )
+                      textAlign: TextAlign.center,
+                    )
                     .animate()
                     .fadeIn(duration: 500.ms, delay: 320.ms)
                     .slideY(begin: 0.05, curve: Curves.easeOutCubic),
@@ -67,11 +68,7 @@ class _AuroraBackground extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppTheme.scaffold,
-            AppTheme.surfaceHigh,
-            AppTheme.scaffold,
-          ],
+          colors: [AppTheme.scaffold, AppTheme.surfaceHigh, AppTheme.scaffold],
           stops: const [0.0, 0.45, 1.0],
         ),
       ),
@@ -108,10 +105,7 @@ class _AuroraBackground extends StatelessWidget {
 }
 
 class _GlowOrb extends StatelessWidget {
-  const _GlowOrb({
-    required this.diameter,
-    required this.color,
-  });
+  const _GlowOrb({required this.diameter, required this.color});
 
   final double diameter;
   final Color color;
@@ -123,12 +117,7 @@ class _GlowOrb extends StatelessWidget {
       height: diameter,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [
-            color,
-            color.withValues(alpha: 0),
-          ],
-        ),
+        gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
       ),
     );
   }
@@ -149,10 +138,7 @@ class _SunGlyph extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppTheme.primary,
-            AppTheme.primaryDim,
-          ],
+          colors: [AppTheme.primary, AppTheme.primaryDim],
         ),
         boxShadow: [
           BoxShadow(
@@ -185,10 +171,6 @@ class _SunGlyph extends StatelessWidget {
         )
         .fadeIn(duration: 600.ms)
         .then()
-        .shimmer(
-          delay: 400.ms,
-          duration: 2200.ms,
-          color: Colors.white24,
-        );
+        .shimmer(delay: 400.ms, duration: 2200.ms, color: Colors.white24);
   }
 }

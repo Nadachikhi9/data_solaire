@@ -58,7 +58,9 @@ abstract final class AppTheme {
         color: Colors.transparent,
         elevation: 0,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusMd)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMd),
+        ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -72,10 +74,9 @@ abstract final class AppTheme {
       ),
     );
 
-    final textTheme = GoogleFonts.plusJakartaSansTextTheme(base.textTheme).apply(
-      bodyColor: onSurface,
-      displayColor: onSurface,
-    );
+    final textTheme = GoogleFonts.plusJakartaSansTextTheme(
+      base.textTheme,
+    ).apply(bodyColor: onSurface, displayColor: onSurface);
 
     return base.copyWith(
       textTheme: textTheme,

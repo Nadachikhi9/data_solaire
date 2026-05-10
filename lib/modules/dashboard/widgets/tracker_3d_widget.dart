@@ -83,11 +83,12 @@ class _Tracker3dWidgetState extends State<Tracker3dWidget> {
           child: LayoutBuilder(
             builder: (context, lc) {
               final plotH =
-                  widget.fillVertical && lc.maxHeight.isFinite && lc.maxHeight > 0
-                      ? lc.maxHeight
-                      : kDashboardPairPlotHeight;
-              final safeH =
-                  plotH.isFinite ? plotH : kDashboardPairPlotHeight;
+                  widget.fillVertical &&
+                      lc.maxHeight.isFinite &&
+                      lc.maxHeight > 0
+                  ? lc.maxHeight
+                  : kDashboardPairPlotHeight;
+              final safeH = plotH.isFinite ? plotH : kDashboardPairPlotHeight;
 
               return SizedBox(
                 width: lc.maxWidth.isFinite ? lc.maxWidth : double.infinity,
@@ -109,8 +110,11 @@ class _Tracker3dWidgetState extends State<Tracker3dWidget> {
                               onPanUpdate: (d) {
                                 setState(() {
                                   _dragYaw += d.delta.dx * 0.0045;
-                                  _dragPitch = (_dragPitch - d.delta.dy * 0.0045)
-                                      .clamp(-0.55, 1.15);
+                                  _dragPitch =
+                                      (_dragPitch - d.delta.dy * 0.0045).clamp(
+                                        -0.55,
+                                        1.15,
+                                      );
                                 });
                               },
                               child: CustomPaint(
@@ -124,12 +128,19 @@ class _Tracker3dWidgetState extends State<Tracker3dWidget> {
                                   sun: sun,
                                   camOrbitYaw: _baseYaw + _dragYaw,
                                   camOrbitPitch: _basePitch + _dragPitch,
-                                  frameColor:
-                                      const Color(0xFF3D4F66).withValues(alpha: 0.95),
+                                  frameColor: const Color(
+                                    0xFF3D4F66,
+                                  ).withValues(alpha: 0.95),
                                   skyZenith: const Color(0xFF0F1A32),
-                                  skyHorizon: const Color(0xFF6B93C4).withValues(alpha: 0.55),
-                                  soilTop: AppTheme.surfaceHigh.withValues(alpha: 0.5),
-                                  soilBottom: AppTheme.scaffold.withValues(alpha: 0.72),
+                                  skyHorizon: const Color(
+                                    0xFF6B93C4,
+                                  ).withValues(alpha: 0.55),
+                                  soilTop: AppTheme.surfaceHigh.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  soilBottom: AppTheme.scaffold.withValues(
+                                    alpha: 0.72,
+                                  ),
                                 ),
                               ),
                             ),
@@ -141,9 +152,9 @@ class _Tracker3dWidgetState extends State<Tracker3dWidget> {
                                 pitchDeg: o.pitchDeg,
                                 rollDeg: o.rollDeg,
                                 sun: sun,
-                                labelStyle: textTheme.labelMedium ??
-                                    const TextStyle(
-                                        fontSize: 12, height: 1.25),
+                                labelStyle:
+                                    textTheme.labelMedium ??
+                                    const TextStyle(fontSize: 12, height: 1.25),
                                 mutedStyle: TextStyle(
                                   fontSize: math.min(
                                     (textTheme.labelSmall?.fontSize ?? 11),
@@ -162,13 +173,15 @@ class _Tracker3dWidgetState extends State<Tracker3dWidget> {
                                 message: AppStrings.tracker3dHint,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.surfaceHigh
-                                        .withValues(alpha: 0.88),
+                                    color: AppTheme.surfaceHigh.withValues(
+                                      alpha: 0.88,
+                                    ),
                                     borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                        color: AppTheme.border),
+                                    border: Border.all(color: AppTheme.border),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -177,17 +190,21 @@ class _Tracker3dWidgetState extends State<Tracker3dWidget> {
                                         Icons.threed_rotation_outlined,
                                         size: 16,
                                         color: AppTheme.teal.withValues(
-                                            alpha: 0.9),
+                                          alpha: 0.9,
+                                        ),
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         'Orbiter',
-                                        style: (textTheme.labelSmall ??
-                                                const TextStyle(fontSize: 11))
-                                            .copyWith(
-                                          color: AppTheme.onMuted,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                        style:
+                                            (textTheme.labelSmall ??
+                                                    const TextStyle(
+                                                      fontSize: 11,
+                                                    ))
+                                                .copyWith(
+                                                  color: AppTheme.onMuted,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                       ),
                                     ],
                                   ),
@@ -281,10 +298,7 @@ class _HudChip extends StatelessWidget {
             row('Élévation', '${pitchDeg.toStringAsFixed(1)}°'),
             row('Roulis', '${rollDeg.toStringAsFixed(1)}°'),
             const SizedBox(height: 6),
-            Text(
-              'Irradiance $irrPct · Optimal : $opt',
-              style: mutedStyle,
-            ),
+            Text('Irradiance $irrPct · Optimal : $opt', style: mutedStyle),
           ],
         ),
       ),
@@ -371,28 +385,12 @@ class _TrackerScenePainter extends CustomPainter {
     return Vector3(x, y, z)..normalize();
   }
 
-  Offset? _project(
-    Matrix4 mvp,
-    Vector3 world,
-    Size viewSize,
-  ) {
+  Offset? _project(Matrix4 mvp, Vector3 world, Size viewSize) {
     final e = mvp.storage;
-    final x = e[0] * world.x +
-        e[4] * world.y +
-        e[8] * world.z +
-        e[12];
-    final y = e[1] * world.x +
-        e[5] * world.y +
-        e[9] * world.z +
-        e[13];
-    final z = e[2] * world.x +
-        e[6] * world.y +
-        e[10] * world.z +
-        e[14];
-    final wv = e[3] * world.x +
-        e[7] * world.y +
-        e[11] * world.z +
-        e[15];
+    final x = e[0] * world.x + e[4] * world.y + e[8] * world.z + e[12];
+    final y = e[1] * world.x + e[5] * world.y + e[9] * world.z + e[13];
+    final z = e[2] * world.x + e[6] * world.y + e[10] * world.z + e[14];
+    final wv = e[3] * world.x + e[7] * world.y + e[11] * world.z + e[15];
     if (wv.abs() < 1e-8) return null;
     final ndcX = x / wv;
     final ndcY = y / wv;
@@ -580,20 +578,22 @@ class _TrackerScenePainter extends CustomPainter {
         if (u1 > 1.02) continue;
         final v0 = i / rows;
         final v1 = (i + 1) / rows;
-        Offset interp(Offset a, Offset b, Offset c, Offset d, double u, double v) {
-          final ab = Offset(
-            a.dx + (b.dx - a.dx) * u,
-            a.dy + (b.dy - a.dy) * u,
-          );
-          final dc = Offset(
-            d.dx + (c.dx - d.dx) * u,
-            d.dy + (c.dy - d.dy) * u,
-          );
+        Offset interp(
+          Offset a,
+          Offset b,
+          Offset c,
+          Offset d,
+          double u,
+          double v,
+        ) {
+          final ab = Offset(a.dx + (b.dx - a.dx) * u, a.dy + (b.dy - a.dy) * u);
+          final dc = Offset(d.dx + (c.dx - d.dx) * u, d.dy + (c.dy - d.dy) * u);
           return Offset(
             ab.dx + (dc.dx - ab.dx) * v,
             ab.dy + (dc.dy - ab.dy) * v,
           );
         }
+
         final p00 = interp(bl, br, tr, tl, u0, v0);
         final p10 = interp(bl, br, tr, tl, u1, v0);
         final p11 = interp(bl, br, tr, tl, u1, v1);
@@ -699,10 +699,7 @@ class _TrackerScenePainter extends CustomPainter {
     );
     void tickAt(Offset pt, double qv) {
       final vv = pt - c;
-      final ln = math.min(
-        24.0,
-        9.0 + (qv.clamp(0.0, 1.0)) * scalePx * 0.12,
-      );
+      final ln = math.min(24.0, 9.0 + (qv.clamp(0.0, 1.0)) * scalePx * 0.12);
       if (ln < 6) return;
       final dist = vv.distance;
       final out = dist < 6
@@ -717,6 +714,7 @@ class _TrackerScenePainter extends CustomPainter {
           ..color = AppTheme.teal.withValues(alpha: 0.72),
       );
     }
+
     tickAt(bl, q.left ?? 0);
     tickAt(br, q.right ?? 0);
     tickAt(tl, q.top ?? 0);
@@ -914,10 +912,7 @@ class _TrackerScenePainter extends CustomPainter {
       if (poly.drawCells) {
         _maybeDrawCells(canvas, o, pvBlue, lightDir, poly.normalWorld);
         final halfVec = (lightDir + toCam).normalized();
-        final spec = math.pow(
-          math.max(0.0, poly.normalWorld.dot(halfVec)),
-          48,
-        );
+        final spec = math.pow(math.max(0.0, poly.normalWorld.dot(halfVec)), 48);
         if (spec > 0.04) {
           canvas.save();
           canvas.clipPath(path);
@@ -925,7 +920,8 @@ class _TrackerScenePainter extends CustomPainter {
             path,
             Paint()
               ..color = Colors.white.withValues(
-                  alpha: (spec * 0.45).clamp(0.0, 0.38).toDouble()),
+                alpha: (spec * 0.45).clamp(0.0, 0.38).toDouble(),
+              ),
           );
           canvas.restore();
         }
@@ -984,29 +980,12 @@ class _TrackerScenePainter extends CustomPainter {
 
     if (hs != null && ms != null) {
       final mw = math.max(2.4, w * 0.0068);
-      final blS = _project(
-        vp,
-        _transformP(model, Vector3(-hw, 0, tz)),
-        view,
-      );
-      final brS = _project(
-        vp,
-        _transformP(model, Vector3(hw, 0, tz)),
-        view,
-      );
-      final trS = _project(
-        vp,
-        _transformP(model, Vector3(hw, hh, tz)),
-        view,
-      );
-      final tlS = _project(
-        vp,
-        _transformP(model, Vector3(-hw, hh, tz)),
-        view,
-      );
+      final blS = _project(vp, _transformP(model, Vector3(-hw, 0, tz)), view);
+      final brS = _project(vp, _transformP(model, Vector3(hw, 0, tz)), view);
+      final trS = _project(vp, _transformP(model, Vector3(hw, hh, tz)), view);
+      final tlS = _project(vp, _transformP(model, Vector3(-hw, hh, tz)), view);
       if (blS != null && brS != null && trS != null && tlS != null) {
-        final mid =
-            Offset((blS.dx + brS.dx) * 0.5, (blS.dy + brS.dy) * 0.5);
+        final mid = Offset((blS.dx + brS.dx) * 0.5, (blS.dy + brS.dy) * 0.5);
         final rr = math.max(mw * 1.15, 5.0);
         canvas.drawCircle(
           mid,
@@ -1023,7 +1002,7 @@ class _TrackerScenePainter extends CustomPainter {
         );
         final scalePx =
             ((blS - brS).distance + (tlS - trS).distance) * 0.25 +
-                ((blS - tlS).distance + (brS - trS).distance) * 0.14;
+            ((blS - tlS).distance + (brS - trS).distance) * 0.14;
         _ldrTicks(canvas, scalePx, blS, brS, trS, tlS);
       }
     }
@@ -1063,4 +1042,3 @@ class _TrackerScenePainter extends CustomPainter {
         !qEq(oldDelegate.sun.ldrQuadrants, sun.ldrQuadrants);
   }
 }
-

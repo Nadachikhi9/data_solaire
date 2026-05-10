@@ -1,8 +1,8 @@
 {
   "project_info": {
     "project_number": "000000000000",
-    "project_id": "REPLACE_PROJECT_ID",
-    "storage_bucket": "REPLACE_PROJECT_ID.firebasestorage.app"
+    "project_id": "datasolaire-e6696",
+    "storage_bucket": "datasolaire-e6696.firebasestorage.app"
   },
   "client": [
     {

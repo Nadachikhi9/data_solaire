@@ -7,8 +7,7 @@ import 'package:data_solaire/core/constants/app_strings.dart';
 import 'package:data_solaire/modules/dashboard/controllers/dashboard_controller.dart';
 
 /// Paired perf / 3D band: keep in sync with [Tracker3dWidget] side‑by‑side layout.
-const EdgeInsets kDashboardPairCardInset =
-    EdgeInsets.fromLTRB(16, 18, 16, 12);
+const EdgeInsets kDashboardPairCardInset = EdgeInsets.fromLTRB(16, 18, 16, 12);
 const double kDashboardPairPlotHeight = 280;
 
 class PowerChartWidget extends GetView<DashboardController> {
@@ -26,8 +25,8 @@ class PowerChartWidget extends GetView<DashboardController> {
           padding: kDashboardPairCardInset,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final outerH = constraints.maxHeight.isFinite &&
-                      constraints.maxHeight > 0
+              final outerH =
+                  constraints.maxHeight.isFinite && constraints.maxHeight > 0
                   ? constraints.maxHeight
                   : kDashboardPairPlotHeight;
 
@@ -50,18 +49,16 @@ class PowerChartWidget extends GetView<DashboardController> {
                         ? AppStrings.chartWaitingSerial
                         : AppStrings.chartNoPowerYet;
                     return Center(
-                      child: Text(
-                        msg,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(
-                              color: AppTheme.onMuted,
-                              height: 1.45,
-                            ),
-                      ),
-                    )
+                          child: Text(
+                            msg,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: AppTheme.onMuted,
+                                  height: 1.45,
+                                ),
+                          ),
+                        )
                         .animate()
                         .fadeIn(duration: 400.ms)
                         .slideY(begin: 0.04, curve: Curves.easeOutCubic);
@@ -70,8 +67,10 @@ class PowerChartWidget extends GetView<DashboardController> {
                   return LayoutBuilder(
                     builder: (context, lc) {
                       const leftTitles = 44.0;
-                      final plotW = (lc.maxWidth - leftTitles)
-                          .clamp(64.0, 2000.0);
+                      final plotW = (lc.maxWidth - leftTitles).clamp(
+                        64.0,
+                        2000.0,
+                      );
 
                       return Directionality(
                         textDirection: TextDirection.ltr,
@@ -79,10 +78,7 @@ class PowerChartWidget extends GetView<DashboardController> {
                           behavior: HitTestBehavior.translucent,
                           onDoubleTap: controller.resetPowerChartToLive,
                           onHorizontalDragUpdate: (details) {
-                            controller.onPowerChartPan(
-                              details.delta.dx,
-                              plotW,
-                            );
+                            controller.onPowerChartPan(details.delta.dx, plotW);
                           },
                           child: LineChart(
                             LineChartData(
@@ -96,9 +92,8 @@ class PowerChartWidget extends GetView<DashboardController> {
                                 touchTooltipData: LineTouchTooltipData(
                                   fitInsideHorizontally: true,
                                   fitInsideVertically: true,
-                                  getTooltipColor: (_) =>
-                                      AppTheme.surfaceHigh
-                                          .withValues(alpha: 0.95),
+                                  getTooltipColor: (_) => AppTheme.surfaceHigh
+                                      .withValues(alpha: 0.95),
                                   getTooltipItems: (touched) {
                                     return touched
                                         .map(
@@ -155,19 +150,23 @@ class PowerChartWidget extends GetView<DashboardController> {
                               gridData: FlGridData(
                                 show: true,
                                 drawVerticalLine: false,
-                                horizontalInterval: (maxY / 4)
-                                    .clamp(1, double.infinity),
+                                horizontalInterval: (maxY / 4).clamp(
+                                  1,
+                                  double.infinity,
+                                ),
                                 getDrawingHorizontalLine: (_) => FlLine(
-                                  color: AppTheme.borderStrong
-                                      .withValues(alpha: 0.5),
+                                  color: AppTheme.borderStrong.withValues(
+                                    alpha: 0.5,
+                                  ),
                                   strokeWidth: 1,
                                 ),
                               ),
                               borderData: FlBorderData(
                                 show: true,
                                 border: Border.all(
-                                  color: AppTheme.borderStrong
-                                      .withValues(alpha: 0.65),
+                                  color: AppTheme.borderStrong.withValues(
+                                    alpha: 0.65,
+                                  ),
                                 ),
                               ),
                               lineBarsData: [
