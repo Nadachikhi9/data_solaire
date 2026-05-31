@@ -1,0 +1,14 @@
+{
+  "rules": {
+    "tracker": {
+      ".read": true,
+      ".write": false,
+      "secret": {
+        ".validate": "newData.isString()"
+      },
+      "$other": {
+        ".write": "auth != null || newData.child('secret').val() === 'P0sVDa_7cci6ersixnH5cfFHCJN4HEm9NT5kwmg1XYY'"
+      }
+    }
+  }
+}

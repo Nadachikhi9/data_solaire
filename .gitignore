@@ -46,3 +46,6 @@ app.*.map.json
 
 # ESP32 secrets (copy from secrets.h.example)
 firmware/esp32_solar_tracker_rtdb/secrets.h
+
+# Local environment secrets
+.env

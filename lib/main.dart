@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:data_solaire/app/routes/app_pages.dart';
 import 'package:data_solaire/app/theme/app_theme.dart';
@@ -34,6 +35,13 @@ Future<void> main() async {
 
   final appRuntime = AppRuntimeState();
   Get.put(appRuntime, permanent: true);
+
+  await dotenv.load(fileName: '.env');
+  if (kDebugMode) {
+    debugPrint(
+      'Loaded .env: ${dotenv.env.containsKey('RTDB_WRITE_SECRET') ? 'OK' : 'MISSING'}',
+    );
+  }
 
   final useMock = FeatureFlags.useMockRealtimeData;
   final skipFirebaseForMock = useMock && FeatureFlags.mockSkipsFirebaseInit;
