@@ -26,6 +26,7 @@ class FcmService extends GetxService {
         AppStrings.notificationChannelTitle,
         description: 'Notifications de pannes et alertes tracker solaire.',
         importance: Importance.high,
+        playSound: true,
       );
 
   bool _localReady = false;
@@ -191,6 +192,7 @@ class FcmService extends GetxService {
             channelDescription: _androidChannel.description,
             importance: Importance.high,
             priority: Priority.high,
+            playSound: true,
           ),
         ),
       );
@@ -235,6 +237,7 @@ class FcmService extends GetxService {
             channelDescription: _androidChannel.description,
             importance: Importance.high,
             priority: Priority.high,
+            playSound: true,
           ),
         ),
       );
@@ -304,6 +307,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     AppStrings.notificationChannelTitle,
     description: 'Notifications de pannes et alertes tracker solaire.',
     importance: Importance.high,
+    playSound: true,
   );
   await android?.createNotificationChannel(channel);
 
@@ -320,6 +324,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
           channelDescription: channel.description,
           importance: Importance.high,
           priority: Priority.high,
+          playSound: true,
         ),
       ),
     );

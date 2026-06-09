@@ -8,6 +8,7 @@ import 'package:vector_math/vector_math_64.dart' hide Colors;
 import 'package:data_solaire/app/theme/app_theme.dart';
 import 'package:data_solaire/core/constants/app_strings.dart';
 import 'package:data_solaire/data/models/sun_state.dart';
+import 'package:data_solaire/data/services/solar_tracking_service.dart';
 
 import 'package:data_solaire/modules/dashboard/controllers/dashboard_controller.dart';
 import 'package:data_solaire/modules/dashboard/widgets/power_chart_widget.dart';
@@ -148,9 +149,6 @@ class _Tracker3dWidgetState extends State<Tracker3dWidget> {
                               left: 10,
                               top: 10,
                               child: _HudChip(
-                                yawDeg: o.yawDeg,
-                                pitchDeg: o.pitchDeg,
-                                rollDeg: o.rollDeg,
                                 sun: sun,
                                 labelStyle:
                                     textTheme.labelMedium ??
@@ -228,17 +226,11 @@ class _Tracker3dWidgetState extends State<Tracker3dWidget> {
 
 class _HudChip extends StatelessWidget {
   const _HudChip({
-    required this.yawDeg,
-    required this.pitchDeg,
-    required this.rollDeg,
     required this.sun,
     required this.labelStyle,
     required this.mutedStyle,
   });
 
-  final double yawDeg;
-  final double pitchDeg;
-  final double rollDeg;
   final SunState sun;
   final TextStyle labelStyle;
   final TextStyle mutedStyle;
@@ -246,13 +238,26 @@ class _HudChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final irrPct = sun.irradianceNormalized == null
-        ? '—'
+        ? 'N/A'
         : '${(sun.irradianceNormalized! * 100).toStringAsFixed(0)}%';
     final opt = sun.isOptimal == true
         ? 'oui'
-        : (sun.isOptimal == false ? 'non' : '—');
+        : (sun.isOptimal == false ? 'non' : 'N/A');
 
-    Widget row(String k, String v, {bool strong = false}) {
+    // Calculate tracking parameters
+    final tracking = SolarTrackingService.calculate(sun.ldrQuadrants);
+
+    // Determine alignment status with visual indicator
+    final alignmentIcon = tracking.isFullyAligned
+        ? '✓'
+        : (tracking.isVerticalAligned && tracking.isHorizontalAligned ? '◐' : '✗');
+    final alignmentColor = tracking.isFullyAligned
+        ? Colors.green.withValues(alpha: 0.85)
+        : (tracking.isVerticalAligned && tracking.isHorizontalAligned
+            ? Colors.amber.withValues(alpha: 0.8)
+            : Colors.red.withValues(alpha: 0.7));
+
+    Widget row(String k, String v, {bool strong = false, Color? valueColor}) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 2),
         child: RichText(
@@ -265,7 +270,9 @@ class _HudChip extends StatelessWidget {
               ),
               TextSpan(
                 text: v,
-                style: TextStyle(
+                style: (valueColor != null
+                    ? mutedStyle.copyWith(color: valueColor)
+                    : mutedStyle).copyWith(
                   fontWeight: strong ? FontWeight.w800 : FontWeight.w600,
                 ),
               ),
@@ -294,11 +301,60 @@ class _HudChip extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            row('Azimut', '${yawDeg.toStringAsFixed(1)}°', strong: true),
-            row('Élévation', '${pitchDeg.toStringAsFixed(1)}°'),
-            row('Roulis', '${rollDeg.toStringAsFixed(1)}°'),
-            const SizedBox(height: 6),
             Text('Irradiance $irrPct · Optimal : $opt', style: mutedStyle),
+            const SizedBox(height: 8),
+            // Solar tracking alignment status and corrections
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: alignmentColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: alignmentColor.withValues(alpha: 0.4)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        alignmentIcon,
+                        style: TextStyle(
+                          color: alignmentColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        tracking.isFullyAligned ? 'Aligné' : 'Correction',
+                        style: mutedStyle.copyWith(
+                          color: alignmentColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  row(
+                    'Vertical:',
+                    '${tracking.differenceVertical.toStringAsFixed(3)} ${tracking.isVerticalAligned ? '✓' : '✗'}',
+                    valueColor: tracking.isVerticalAligned
+                        ? Colors.green.withValues(alpha: 0.85)
+                        : Colors.red.withValues(alpha: 0.7),
+                  ),
+                  row(
+                    'Horizontal:',
+                    '${tracking.differenceHorizontal.toStringAsFixed(3)} ${tracking.isHorizontalAligned ? '✓' : '✗'}',
+                    valueColor: tracking.isHorizontalAligned
+                        ? Colors.green.withValues(alpha: 0.85)
+                        : Colors.red.withValues(alpha: 0.7),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -344,9 +400,9 @@ class _TrackerScenePainter extends CustomPainter {
 
   final Size canvasSize;
   final double groundY;
-  final double yawDeg;
-  final double pitchDeg;
-  final double rollDeg;
+  final double? yawDeg;
+  final double? pitchDeg;
+  final double? rollDeg;
   final SunState sun;
   final double camOrbitYaw;
   final double camOrbitPitch;
@@ -363,10 +419,13 @@ class _TrackerScenePainter extends CustomPainter {
   static const double _panelThickness = 0.042;
 
   Matrix4 _panelOrientation() {
+    final y = yawDeg ?? 0.0;
+    final p = pitchDeg ?? 0.0;
+    final r = rollDeg ?? 0.0;
     return Matrix4.identity()
-      ..rotateY(-yawDeg * math.pi / 180)
-      ..rotateX(pitchDeg * math.pi / 180)
-      ..rotateZ(-rollDeg * math.pi / 180);
+      ..rotateY(-y * math.pi / 180)
+      ..rotateX(p * math.pi / 180)
+      ..rotateZ(-r * math.pi / 180);
   }
 
   Vector3 _transformP(Matrix4 m, Vector3 v) {
@@ -396,7 +455,11 @@ class _TrackerScenePainter extends CustomPainter {
     final ndcY = y / wv;
     final ndcZ = z / wv;
     if (ndcZ < -1.05 || ndcZ > 1.02) return null;
-    if (ndcX.abs() > 1.35 || ndcY.abs() > 1.35) return null;
+    // Use a generous guard (2.0) so that faces where one corner is slightly
+    // off-screen are not silently dropped — _project returns null for any
+    // out-of-bounds vertex and renderPoly discards the entire face if any
+    // vertex is null, so a tight threshold hides large polygons.
+    if (ndcX.abs() > 2.0 || ndcY.abs() > 2.0) return null;
     final sx = (ndcX * 0.5 + 0.5) * viewSize.width;
     final sy = (1.0 - (ndcY * 0.5 + 0.5)) * viewSize.height;
     return Offset(sx, sy);
@@ -419,7 +482,9 @@ class _TrackerScenePainter extends CustomPainter {
     final nDot = math.max(0.0, nWorld.dot(lightDir));
     const amb = 0.22;
     final diff = 0.78 * nDot;
-    final f = (amb + diff).clamp(0.0, 1.15);
+    // Clamp to 1.0 — values above 1.0 blow out individual channels after the
+    // clamp(0,255) in fromARGB, producing flat white patches on lit faces.
+    final f = (amb + diff).clamp(0.0, 1.0);
     return Color.fromARGB(
       (albedo.a * 255.0).round().clamp(0, 255),
       (albedo.r * f * 255.0).round().clamp(0, 255),
@@ -715,10 +780,13 @@ class _TrackerScenePainter extends CustomPainter {
       );
     }
 
-    tickAt(bl, q.left ?? 0);
-    tickAt(br, q.right ?? 0);
+    // Physical 4-quadrant LDR layout on the panel face:
+    //   top-left  → top sensor      bottom-left  → left sensor
+    //   top-right → right sensor    bottom-right → bottom sensor
     tickAt(tl, q.top ?? 0);
-    tickAt(tr, q.bottom ?? 0);
+    tickAt(tr, q.right ?? 0);
+    tickAt(bl, q.left ?? 0);
+    tickAt(br, q.bottom ?? 0);
   }
 
   @override
@@ -1031,9 +1099,9 @@ class _TrackerScenePainter extends CustomPainter {
         oldDelegate.soilTop != soilTop ||
         oldDelegate.soilBottom != soilBottom ||
         oldDelegate.frameColor != frameColor ||
-        (oldDelegate.yawDeg - yawDeg).abs() > 0.035 ||
-        (oldDelegate.pitchDeg - pitchDeg).abs() > 0.035 ||
-        (oldDelegate.rollDeg - rollDeg).abs() > 0.035 ||
+        ((oldDelegate.yawDeg ?? 0.0) - (yawDeg ?? 0.0)).abs() > 0.035 ||
+        ((oldDelegate.pitchDeg ?? 0.0) - (pitchDeg ?? 0.0)).abs() > 0.035 ||
+        ((oldDelegate.rollDeg ?? 0.0) - (rollDeg ?? 0.0)).abs() > 0.035 ||
         (oldDelegate.camOrbitYaw - camOrbitYaw).abs() > 1e-4 ||
         (oldDelegate.camOrbitPitch - camOrbitPitch).abs() > 1e-4 ||
         oldDelegate.sun.isOptimal != sun.isOptimal ||

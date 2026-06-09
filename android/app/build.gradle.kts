@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.data_solaire"
+    namespace = "com.bluecraft.data_solaire"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.data_solaire"
+        applicationId = "com.bluecraft.data_solaire"
         // Firebase Cloud Messaging exige au minimum la SDK 21 ; 23+ recommandé.
         minSdk = maxOf(flutter.minSdkVersion, 23)
         targetSdk = flutter.targetSdkVersion

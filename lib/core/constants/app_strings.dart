@@ -12,10 +12,16 @@ abstract final class AppStrings {
   static const String power = 'Puissance';
   static const String temperature = 'Température';
   static const String cleaningRequired = 'Nettoyage du panneau solaire requis';
+  static const String panelFault = 'Panne du panneau solaire : pas de production malgré éclairage';
+  static const String cleaningWarning = 'Alerte nettoyage : forte luminosité LDR et puissance trop basse';
+  static const String sensorVoltageNa = 'Panne capteur tension : valeur introuvable (NA)';
+  static const String sensorCurrentNa = 'Panne capteur courant : valeur introuvable (NA)';
+  static const String sensorPowerNa = 'Panne capteur puissance : valeur introuvable (NA)';
+  static const String sensorTemperatureNa = 'Panne capteur température : valeur introuvable (NA)';
   static const String sensorIna219 = 'Module INA219';
   static const String sensorIna219Detail = 'Tension, courant, puissance';
-  static const String sensorDht11 = 'DHT11';
-  static const String sensorDht11Detail = 'Température';
+  static const String sensorDht22 = 'DHT22';
+  static const String sensorDht22Detail = 'Température';
   static const String ventilation = 'Ventilation';
   static const String ldrTop = 'LDR haut';
   static const String ldrBottom = 'LDR bas';
@@ -23,6 +29,8 @@ abstract final class AppStrings {
   static const String ldrRight = 'LDR droite';
   static const String statusOk = 'OK';
   static const String statusFault = 'Panne';
+  static const String statusOn = 'ON';
+  static const String statusOff = 'OFF';
   static const String statusUnknown = 'Inconnu';
   static const String offlineTitle = 'Connexion système perdue';
   static const String offlineHint =
@@ -43,12 +51,19 @@ abstract final class AppStrings {
   static const String rtdbListenError = 'Écoute Realtime Database interrompue';
   static const String rtdbMaxRetries =
       'Nombre maximal de tentatives de reconnexion RTDB atteint. Rechargez la page ou vérifiez le réseau.';
+  static const String rtdbConnected = 'Connecté à Firebase';
+  static const String rtdbAwaitingData = 'Connecté, en attente de données';
+  static const String rtdbStaleData = 'Connecté, données obsolètes';
+  static const String rtdbConnecting = 'Connexion Firebase…';
+  static const String rtdbStatusUnknown = 'Statut Firebase inconnu';
+  static const String rtdbStatusUnavailable = 'Impossible de lire le statut Firebase';
+  static const String blueCraftByline = 'Blue Craft';
   static const String telemetryAwaitingHub =
       'En attente des données du gateway (PC / station)';
   static const String chartNoPowerYet =
       'Aucun historique de puissance pour le moment.';
   static const String chartWaitingSerial =
-      'Le graphique se remplira lorsque la puissance (W) arrivera depuis Firebase.';
+      'Le graphique se remplira lorsque la puissance (mW) arrivera depuis Firebase.';
   static const String demoModeBanner =
       'Données démo : scénarios périodiques (capteurs, perte liaison, « nettoyage », défaut équipement, LDR). '
       'Pour les alertes hors app : autorisez les notifications du navigateur. '

@@ -45,12 +45,20 @@ Future<void> main() async {
 
   final useMock = FeatureFlags.useMockRealtimeData;
   final skipFirebaseForMock = useMock && FeatureFlags.mockSkipsFirebaseInit;
+  if (kDebugMode) {
+    debugPrint('Firebase mode: ${useMock ? 'MOCK RTDB' : 'REAL RTDB'}');
+    debugPrint('mockSkipsFirebaseInit=$skipFirebaseForMock');
+  }
 
   if (!skipFirebaseForMock) {
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      if (kIsWeb) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      } else {
+        await Firebase.initializeApp();
+      }
       appRuntime.firebaseReady.value = true;
       appRuntime.firebaseInitError.value = null;
     } catch (e, st) {

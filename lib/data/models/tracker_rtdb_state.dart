@@ -41,7 +41,7 @@ class TrackerRtdbState {
     final th = r['thresholds'];
     final a = r['aux'];
     final o = r['orientation'];
-    final f = r['faults'];
+    final f = r['faults'] ?? r['fault'];
     Map<dynamic, dynamic>? telemetryMap;
     Map<dynamic, dynamic>? sunMap;
     Map<dynamic, dynamic>? thMap;

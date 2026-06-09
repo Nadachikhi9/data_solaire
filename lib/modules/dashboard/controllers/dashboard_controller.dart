@@ -38,8 +38,10 @@ class DashboardController extends GetxController {
   bool _mockAlertPrevCleaning = false;
   int _mockAlertPrevFaultCount = 0;
   bool _mockAlertPrevFwFault = false;
-  bool _mockAlertPrevLdrAllOk = true;
 
+  static const double _ldrHighCountThreshold = 2500.0;
+  static const double _cleaningLowPowerThresholdW = 0.15;
+  static const double _panelFaultPowerToleranceW = 0.0;
   static const int _maxRtdbRetries = 120;
 
   final RxnDouble voltage = RxnDouble();
@@ -56,7 +58,7 @@ class DashboardController extends GetxController {
   final RxDouble cleaningSeverity = 0.0.obs;
 
   final RxList<String> sensorFaultMessages = <String>[].obs;
-  final RxnDouble chartMaxY = RxnDouble(100);
+  final RxnDouble chartMaxY = RxnDouble(10000);
 
   final RxList<FlSpot> powerSpots = <FlSpot>[].obs;
 
@@ -184,7 +186,7 @@ class DashboardController extends GetxController {
     }
 
     _reevaluateHealth(nowMs: now, state: state);
-    _fireMockAlertEdgesIfNeeded(state);
+    _fireAlertEdgesIfNeeded(state);
   }
 
   void _appendPowerSample(int nowMs, double p) {
@@ -203,11 +205,12 @@ class DashboardController extends GetxController {
     final epoch = _powerChartEpochMs!;
 
     final spots = <FlSpot>[];
-    var maxY = 10.0;
+    var maxY = 10000.0;
     for (final s in _powerBuffer) {
       final x = (s.tMs - epoch) / 1000.0;
-      spots.add(FlSpot(x, s.power));
-      if (s.power > maxY) maxY = s.power;
+      final pMw = s.power * 1000.0;
+      spots.add(FlSpot(x, pMw));
+      if (pMw > maxY) maxY = pMw;
     }
 
     _powerDataMaxX = spots.isEmpty ? 0 : spots.last.x;
@@ -216,7 +219,7 @@ class DashboardController extends GetxController {
       _applyFollowLatestViewport();
     }
 
-    chartMaxY.value = maxY * 1.15;
+    chartMaxY.value = (maxY * 1.15).clamp(300.0, double.infinity);
     powerSpots.assignAll(spots);
   }
 
@@ -279,6 +282,16 @@ class DashboardController extends GetxController {
     final offline = lastGlobal == null || (now - lastGlobal) > _staleMs;
     systemOffline.value = offline;
 
+    if (offline) {
+      voltage.value = null;
+      current.value = null;
+      power.value = null;
+      temperature.value = null;
+      orientation.value = const TrackerOrientation(pitchDeg: null, yawDeg: null, rollDeg: null);
+      sun.value = const SunState(isOptimal: null, irradianceNormalized: null, ldrQuadrants: null);
+      auxState.value = const AuxState(ventilationOn: null, ldrTopOk: null, ldrBottomOk: null, ldrLeftOk: null, ldrRightOk: null);
+    }
+
     final cleaning = _computeCleaningAlert(snapshot, offline, now);
     cleaningAlert.value = cleaning.$1;
     cleaningSeverity.value = cleaning.$2;
@@ -286,16 +299,12 @@ class DashboardController extends GetxController {
     sensorFaultMessages.assignAll(_computeSensorFaults(snapshot, offline, now));
   }
 
-  void _fireMockAlertEdgesIfNeeded(TrackerRtdbState state) {
-    if (!FeatureFlags.useMockRealtimeData ||
-        !FeatureFlags.mockAlertNotifications) {
-      return;
-    }
+  void _fireAlertEdgesIfNeeded(TrackerRtdbState state) {
     if (!Get.isRegistered<FcmService>()) {
       return;
     }
     final fcm = Get.find<FcmService>();
-    final demoTitle = '${AppStrings.appTitle} (démo)';
+    final title = '${AppStrings.appTitle}${FeatureFlags.useMockRealtimeData ? ' (démo)' : ''}';
 
     final offline = systemOffline.value;
     final cleaning = cleaningAlert.value;
@@ -303,17 +312,10 @@ class DashboardController extends GetxController {
     final fw = state.fault;
     final fwFault = fw?.hasError == true;
 
-    final a = state.aux;
-    final ldrAllOk =
-        a.ldrTopOk != false &&
-        a.ldrBottomOk != false &&
-        a.ldrLeftOk != false &&
-        a.ldrRightOk != false;
-
     if (offline && !_mockAlertPrevOffline) {
       unawaited(
         fcm.showDiagnosticForegroundAlert(
-          title: demoTitle,
+          title: title,
           body: AppStrings.offlineTitle,
         ),
       );
@@ -321,7 +323,7 @@ class DashboardController extends GetxController {
     if (cleaning && !_mockAlertPrevCleaning) {
       unawaited(
         fcm.showDiagnosticForegroundAlert(
-          title: demoTitle,
+          title: title,
           body: AppStrings.cleaningRequired,
         ),
       );
@@ -330,33 +332,44 @@ class DashboardController extends GetxController {
       final msg = sensorFaultMessages.isEmpty
           ? AppStrings.sensorIna219
           : sensorFaultMessages.first;
-      unawaited(fcm.showDiagnosticForegroundAlert(title: demoTitle, body: msg));
+      unawaited(fcm.showDiagnosticForegroundAlert(title: title, body: msg));
     }
     if (fwFault && !_mockAlertPrevFwFault) {
       final detail = fw!;
       unawaited(
         fcm.showDiagnosticForegroundAlert(
-          title: demoTitle,
+          title: title,
           body:
               detail.message ??
               '${AppStrings.statusFault} (${detail.code ?? '?'})',
         ),
       );
     }
-    if (!ldrAllOk && _mockAlertPrevLdrAllOk) {
-      unawaited(
-        fcm.showDiagnosticForegroundAlert(
-          title: demoTitle,
-          body: 'Quelques luminosités quadrant LDR hors plage attendue (mock).',
-        ),
-      );
-    }
-
     _mockAlertPrevOffline = offline;
     _mockAlertPrevCleaning = cleaning;
     _mockAlertPrevFaultCount = faultCount;
     _mockAlertPrevFwFault = fwFault;
-    _mockAlertPrevLdrAllOk = ldrAllOk;
+  }
+
+  bool _ldrQuadrantsAllAboveThreshold(LdrQuadrants? q) {
+    if (q == null) return false;
+    return (q.top ?? double.negativeInfinity) > _ldrHighCountThreshold &&
+        (q.bottom ?? double.negativeInfinity) > _ldrHighCountThreshold &&
+        (q.left ?? double.negativeInfinity) > _ldrHighCountThreshold &&
+        (q.right ?? double.negativeInfinity) > _ldrHighCountThreshold;
+  }
+
+  bool _isSolarPanelFault(TrackerRtdbState state) {
+    final p = state.telemetry.power;
+    return p != null && p <= _panelFaultPowerToleranceW &&
+        _ldrQuadrantsAllAboveThreshold(state.sun.ldrQuadrants);
+  }
+
+  bool _isCleaningWarning(TrackerRtdbState state) {
+    final p = state.telemetry.power;
+    return p != null && p < _cleaningLowPowerThresholdW &&
+        _ldrQuadrantsAllAboveThreshold(state.sun.ldrQuadrants) &&
+        !_isSolarPanelFault(state);
   }
 
   (bool, double) _computeCleaningAlert(
@@ -369,17 +382,17 @@ class DashboardController extends GetxController {
     final p = t.power;
     if (p == null) return (false, 0.0);
 
-    final sunOptimal =
-        state.sun.isOptimal == true ||
-        (state.sun.irradianceNormalized != null &&
-            state.sun.irradianceNormalized! >= 0.75);
-    if (!sunOptimal) return (false, 0.0);
+    if (_isSolarPanelFault(state)) {
+      return (false, 0.0);
+    }
 
-    final threshold = state.thresholds.cleaningPowerW ?? 30.0;
-    if (p >= threshold) return (false, 0.0);
+    if (_isCleaningWarning(state)) {
+      final ratio = (_cleaningLowPowerThresholdW - p) /
+          _cleaningLowPowerThresholdW.clamp(1, double.infinity);
+      return (true, ratio.clamp(0.0, 1.0));
+    }
 
-    final ratio = (threshold - p) / threshold.clamp(1, double.infinity);
-    return (true, ratio.clamp(0.0, 1.0));
+    return (false, 0.0);
   }
 
   List<String> _computeSensorFaults(
@@ -391,6 +404,19 @@ class DashboardController extends GetxController {
 
     final t = state.telemetry;
     final out = <String>[];
+
+    if (t.voltage == null) {
+      out.add(AppStrings.sensorVoltageNa);
+    }
+    if (t.current == null) {
+      out.add(AppStrings.sensorCurrentNa);
+    }
+    if (t.power == null) {
+      out.add(AppStrings.sensorPowerNa);
+    }
+    if (t.temperature == null) {
+      out.add(AppStrings.sensorTemperatureNa);
+    }
 
     final vMs = t.voltageUpdatedMs ?? t.lastUpdatedMs;
     final iMs = t.currentUpdatedMs ?? t.lastUpdatedMs;
@@ -407,7 +433,13 @@ class DashboardController extends GetxController {
     }
 
     if (_staleOrNull(t.temperature, tempMs, now)) {
-      out.add('Erreur de lecture : Capteur DHT11 déconnecté');
+      out.add('Erreur de lecture : Capteur DHT22 déconnecté');
+    }
+
+    if (_isSolarPanelFault(state)) {
+      out.add(AppStrings.panelFault);
+    } else if (_isCleaningWarning(state)) {
+      out.add(AppStrings.cleaningWarning);
     }
 
     return out;

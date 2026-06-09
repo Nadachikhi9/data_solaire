@@ -26,18 +26,33 @@ class RtdbDataService {
     }
 
     if (Firebase.apps.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('[RTDB] Firebase.apps is empty — Firebase was never initialized. Check firebase_options.dart keys.');
+      }
       return Stream<TrackerRtdbState>.empty();
     }
 
     final db = _databaseOverride ?? FirebaseDatabase.instance;
     final ref = db.ref(RtdbPaths.trackerRoot);
+    if (kDebugMode) {
+      debugPrint('[RTDB] Firebase apps loaded: ${Firebase.apps.length}');
+      debugPrint('[RTDB] App name: ${db.app.name}');
+      debugPrint('[RTDB] Attaching listener to path: ${RtdbPaths.trackerRoot} on ${db.app.options.databaseURL}');
+    }
     return ref.onValue.map((event) {
       try {
         final v = event.snapshot.value;
+        if (kDebugMode) {
+          if (v == null) {
+            debugPrint('[RTDB] ⚠️  Received null snapshot — path exists but has no data, or RTDB rules blocked the read.');
+          } else {
+            debugPrint('[RTDB] ✅ Snapshot received. Keys: ${(v as Map?)?.keys.toList()}');
+          }
+        }
         return TrackerRtdbState.fromRootMap(v);
       } catch (e, st) {
         if (kDebugMode) {
-          debugPrint('RtdbDataService parse: $e\n$st');
+          debugPrint('[RTDB] ❌ Parse error: $e\n$st');
         }
         return TrackerRtdbState.fromRootMap(null);
       }

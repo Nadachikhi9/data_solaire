@@ -29,9 +29,9 @@ class DefaultFirebaseOptions {
 
   /// Web : renseigner la clé VAPID dans la console FCM pour les notifications.
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'REPLACE_WEB_API_KEY',
-    appId: 'REPLACE_WEB_APP_ID',
-    messagingSenderId: 'REPLACE_SENDER_ID',
+    apiKey: 'AIzaSyCmQBxfHByQ5QWjmEhMwnrCsAeEOyhCsac',
+    appId: '1:456901897721:web:057e9a9a03746180722128',
+    messagingSenderId: '456901897721',
     projectId: 'datasolaire-e6696',
     authDomain: 'datasolaire-e6696.firebaseapp.com',
     databaseURL: _kFirebaseDatabaseUrl,
@@ -39,9 +39,9 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'REPLACE_ANDROID_API_KEY',
-    appId: 'REPLACE_ANDROID_APP_ID',
-    messagingSenderId: 'REPLACE_SENDER_ID',
+    apiKey: 'AIzaSyAr9F5dx8BOzGvfpUi2pWLs6BKw4FADCCY',
+    appId: '1:456901897721:android:ddb520a0e3a46234722128',
+    messagingSenderId: '456901897721',
     projectId: 'datasolaire-e6696',
     databaseURL: _kFirebaseDatabaseUrl,
     storageBucket: 'datasolaire-e6696.firebasestorage.app',

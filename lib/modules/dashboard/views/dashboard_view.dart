@@ -198,6 +198,7 @@ class DashboardView extends GetView<DashboardController> {
                     },
                   ),
                 ),
+                _DashboardFooter(padding: padding),
               ],
             ),
           ),
@@ -308,28 +309,24 @@ class _HeroHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  AppStrings.dashboardTitle,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.onSurface,
-                    letterSpacing: -0.03,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  AppStrings.appSubtitle,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.onMuted,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppStrings.dashboardTitle,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: AppTheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                AppStrings.appSubtitle,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.onSurface.withValues(alpha: 0.75),
+                    ),
+              ),
+            ],
           ),
           const SizedBox(width: 12),
           _DashboardStatusIcons(),
@@ -420,27 +417,49 @@ class _RtdbLiveChip extends StatelessWidget {
       final status = controller.rtdbStatus.value;
       final err = controller.rtdbError.value;
       final listening = status == RtdbConnectionStatus.listening && err == null;
+      final lastUpdateMs = controller.lastTelemetryUpdatedMs.value;
+      final hasData = lastUpdateMs != null;
+      final dataStale = hasData &&
+          DateTime.now().millisecondsSinceEpoch - lastUpdateMs > 5000;
+      final awaitingData = listening && !hasData;
+      final waitingStale = listening && hasData && dataStale;
 
       final Color fg;
       final Color bg;
       final IconData icon;
       final String tooltip;
+      final String statusLabel;
       if (status == RtdbConnectionStatus.error ||
           (err != null && err.isNotEmpty)) {
         fg = AppTheme.danger;
         bg = AppTheme.danger.withValues(alpha: 0.15);
         icon = Icons.cloud_off_outlined;
-        tooltip = (err != null && err.isNotEmpty) ? err : 'RTDB';
+        tooltip = (err != null && err.isNotEmpty) ? err : AppStrings.rtdbStatusUnavailable;
+        statusLabel = 'Firebase indisponible';
+      } else if (awaitingData) {
+        fg = AppTheme.violet;
+        bg = AppTheme.violet.withValues(alpha: 0.14);
+        icon = Icons.cloud_done_outlined;
+        tooltip = AppStrings.rtdbAwaitingData;
+        statusLabel = AppStrings.rtdbAwaitingData;
+      } else if (waitingStale) {
+        fg = AppTheme.warning;
+        bg = AppTheme.warning.withValues(alpha: 0.14);
+        icon = Icons.cloud_queue_outlined;
+        tooltip = AppStrings.rtdbStaleData;
+        statusLabel = AppStrings.rtdbStaleData;
       } else if (listening) {
         fg = AppTheme.teal;
         bg = AppTheme.teal.withValues(alpha: 0.14);
         icon = Icons.podcasts_rounded;
-        tooltip = 'Flux temps réel';
+        tooltip = AppStrings.rtdbConnected;
+        statusLabel = AppStrings.rtdbConnected;
       } else {
         fg = AppTheme.warning;
         bg = AppTheme.warning.withValues(alpha: 0.14);
         icon = Icons.hourglass_top_rounded;
-        tooltip = 'Connexion…';
+        tooltip = AppStrings.rtdbConnecting;
+        statusLabel = AppStrings.rtdbConnecting;
       }
 
       final reduced = motionReduced(context);
@@ -480,11 +499,53 @@ class _RtdbLiveChip extends StatelessWidget {
                 dot,
                 const SizedBox(width: 8),
                 Icon(icon, size: 18, color: fg),
+                const SizedBox(width: 8),
+                // Text(
+                //   statusLabel,
+                //   style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                //         color: fg,
+                //         fontWeight: FontWeight.w700,
+                //       ),
+                // ),
               ],
             ),
           ),
         ),
       );
     });
+  }
+}
+
+class _DashboardFooter extends StatelessWidget {
+  const _DashboardFooter({required this.padding});
+
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: AppTheme.onSurface.withValues(alpha: 0.08),
+              width: 1,
+            ),
+          ),
+        ),
+        child: Padding(
+          padding: padding.copyWith(bottom: 12, top: 16),
+          child: Center(
+            child: Text(
+              AppStrings.blueCraftByline,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.onMuted.withAlpha(200),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -12,10 +12,10 @@ class LdrQuadrants {
   static LdrQuadrants? fromMap(Map<dynamic, dynamic>? map) {
     if (map == null) return null;
     return LdrQuadrants(
-      top: _toDouble(map['top']),
-      bottom: _toDouble(map['bottom']),
-      left: _toDouble(map['left']),
-      right: _toDouble(map['right']),
+      top: _toDouble(map['top'] ?? map['haut']),
+      bottom: _toDouble(map['bottom'] ?? map['bas']),
+      left: _toDouble(map['left'] ?? map['gauche']),
+      right: _toDouble(map['right'] ?? map['droite']),
     );
   }
 
@@ -56,8 +56,8 @@ class SunState {
     final lq = map['ldr_quadrants'];
     if (lq is Map) lqMap = lq.cast<dynamic, dynamic>();
     return SunState(
-      isOptimal: map['is_optimal'] as bool?,
-      irradianceNormalized: _toDouble(map['irradiance_normalized']),
+      isOptimal: map['is_optimal'] as bool? ?? map['sun_optimal'] as bool?,
+      irradianceNormalized: _toDouble(map['irradiance_normalized'] ?? map['irradiance']),
       ldrQuadrants: LdrQuadrants.fromMap(lqMap),
     );
   }

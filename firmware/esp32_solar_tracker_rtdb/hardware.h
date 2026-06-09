@@ -2,6 +2,15 @@
 
 #include <Arduino.h>
 
+// DEBUG FLAGS
+#define DEBUG_HARDWARE 1
+#define DEBUG_LDR 1
+#define DEBUG_INA219 1
+#define DEBUG_DHT 1
+#define DEBUG_SERVO 1
+#define DEBUG_LCD 1
+#define DEBUG_FAN 1
+
 // Pins (matches the new hardware wiring).
 constexpr int kDhtPin = 4;
 constexpr int kFanPin = 5;
@@ -21,6 +30,7 @@ constexpr float kFanOnTempC = 25.0f;
 
 void hwSetup();
 void hwLoop();
+void hwRunDiagnostics();
 
 // Telemetry produced by hwLoop() (read-only from outside).
 extern float gVoltageV;

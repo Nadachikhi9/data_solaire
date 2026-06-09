@@ -33,15 +33,15 @@ class TelemetryCardsWidget extends GetView<DashboardController> {
         ),
         (
           AppStrings.current,
-          'A',
-          controller.current.value,
+          'mA',
+          controller.current.value != null ? controller.current.value! * 1000 : null,
           Icons.electric_bolt_rounded,
           AppTheme.violet,
         ),
         (
           AppStrings.power,
-          'W',
-          controller.power.value,
+          'mW',
+          controller.power.value != null ? controller.power.value! * 1000 : null,
           Icons.local_fire_department_rounded,
           AppTheme.primary,
         ),
@@ -163,7 +163,14 @@ class _MetricTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = value == null ? '—' : value!.toStringAsFixed(2);
+    final String text;
+    if (value == null) {
+      text = 'N/A';
+    } else if (unit == 'mA' || unit == 'mW') {
+      text = value!.toStringAsFixed(0);
+    } else {
+      text = value!.toStringAsFixed(2);
+    }
     final reduced = MediaQuery.disableAnimationsOf(context);
 
     Widget tile = SizedBox.expand(

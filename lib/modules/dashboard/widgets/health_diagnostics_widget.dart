@@ -20,7 +20,7 @@ class HealthDiagnosticsWidget extends GetView<DashboardController> {
       final aux = controller.auxState.value;
 
       final inaFault = faults.any((m) => m.contains('INA219'));
-      final dhtFault = faults.any((m) => m.contains('DHT11'));
+      final dhtFault = faults.any((m) => m.contains('DHT22'));
 
       final inner = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -80,7 +80,7 @@ class HealthDiagnosticsWidget extends GetView<DashboardController> {
           const SizedBox(height: 10),
           _CapteurDeviceRow(
             title:
-                '${AppStrings.sensorDht11} (${AppStrings.sensorDht11Detail})',
+                '${AppStrings.sensorDht22} (${AppStrings.sensorDht22Detail})',
             offline: offline,
             faulty: dhtFault,
           ),
@@ -122,11 +122,11 @@ class HealthDiagnosticsWidget extends GetView<DashboardController> {
                 ),
               ),
           const SizedBox(height: 6),
-          _AuxRow(label: AppStrings.ldrTop, ok: aux.ldrTopOk == true),
-          _AuxRow(label: AppStrings.ldrBottom, ok: aux.ldrBottomOk == true),
-          _AuxRow(label: AppStrings.ldrLeft, ok: aux.ldrLeftOk == true),
-          _AuxRow(label: AppStrings.ldrRight, ok: aux.ldrRightOk == true),
-          _AuxRow(label: AppStrings.ventilation, ok: aux.ventilationOn == true),
+          _AuxRow(label: AppStrings.ldrTop, ok: aux.ldrTopOk),
+          _AuxRow(label: AppStrings.ldrBottom, ok: aux.ldrBottomOk),
+          _AuxRow(label: AppStrings.ldrLeft, ok: aux.ldrLeftOk),
+          _AuxRow(label: AppStrings.ldrRight, ok: aux.ldrRightOk),
+          _AuxRow(label: AppStrings.ventilation, ok: aux.ventilationOn, showOnOff: true),
         ],
       );
 
@@ -178,7 +178,7 @@ class _CapteurDeviceRow extends StatelessWidget {
     if (offline) {
       ic = Icons.help_outline_rounded;
       col = AppTheme.warning;
-      status = AppStrings.statusUnknown;
+      status = 'N/A';
     } else if (faulty) {
       ic = Icons.error_outline_rounded;
       col = AppTheme.danger;
@@ -273,30 +273,69 @@ class _StatusBanner extends StatelessWidget {
 }
 
 class _AuxRow extends StatelessWidget {
-  const _AuxRow({required this.label, required this.ok});
+  const _AuxRow({
+    required this.label,
+    required this.ok,
+    this.showOnOff = false,
+  });
 
   final String label;
-  final bool ok;
+  final bool? ok;
+  final bool showOnOff;
 
   @override
   Widget build(BuildContext context) {
+    late final IconData ic;
+    late final Color col;
+    late final String status;
+    final isLdrRow = label == AppStrings.ldrTop ||
+        label == AppStrings.ldrBottom ||
+        label == AppStrings.ldrLeft ||
+        label == AppStrings.ldrRight;
+
+    if (ok == null) {
+      ic = Icons.help_outline_rounded;
+      col = AppTheme.warning;
+      status = AppStrings.statusUnknown;
+    } else if (isLdrRow) {
+      ic = Icons.check_circle_outline_rounded;
+      col = AppTheme.success;
+      status = AppStrings.statusOk;
+    } else if (showOnOff) {
+      if (ok!) {
+        ic = Icons.toggle_on_outlined;
+        col = AppTheme.success;
+        status = AppStrings.statusOn;
+      } else {
+        ic = Icons.toggle_off_outlined;
+        col = AppTheme.onMuted;
+        status = AppStrings.statusOff;
+      }
+    } else if (ok == false) {
+      ic = Icons.error_outline_rounded;
+      col = AppTheme.danger;
+      status = AppStrings.statusFault;
+    } else {
+      ic = Icons.check_circle_outline_rounded;
+      col = AppTheme.success;
+      status = AppStrings.statusOk;
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
           Icon(
-            ok
-                ? Icons.check_circle_outline_rounded
-                : Icons.help_outline_rounded,
-            color: ok ? AppTheme.success : AppTheme.warning,
+            ic,
+            color: col,
             size: 22,
           ),
           const SizedBox(width: 10),
           Expanded(child: Text(label)),
           Text(
-            ok ? AppStrings.statusOk : AppStrings.statusUnknown,
+            status,
             style: TextStyle(
-              color: ok ? AppTheme.success : AppTheme.warning,
+              color: col,
               fontWeight: FontWeight.w700,
             ),
           ),

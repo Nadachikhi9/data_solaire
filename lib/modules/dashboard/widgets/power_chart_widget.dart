@@ -98,7 +98,7 @@ class PowerChartWidget extends GetView<DashboardController> {
                                     return touched
                                         .map(
                                           (s) => LineTooltipItem(
-                                            '${s.y.toStringAsFixed(1)} W',
+                                            '${s.y.toStringAsFixed(0)} mW',
                                             TextStyle(
                                               color: AppTheme.onSurface,
                                               fontWeight: FontWeight.w700,
@@ -120,9 +120,9 @@ class PowerChartWidget extends GetView<DashboardController> {
                                 leftTitles: AxisTitles(
                                   sideTitles: SideTitles(
                                     showTitles: true,
-                                    reservedSize: 44,
+                                    reservedSize: 48,
                                     getTitlesWidget: (v, m) => Text(
-                                      v.toStringAsFixed(0),
+                                      '${v.toStringAsFixed(0)} mW',
                                       style: TextStyle(
                                         color: AppTheme.onMuted,
                                         fontSize: 11,
@@ -137,6 +137,7 @@ class PowerChartWidget extends GetView<DashboardController> {
                                   sideTitles: SideTitles(
                                     showTitles: true,
                                     reservedSize: 28,
+                                    interval: 10.0,
                                     getTitlesWidget: (v, m) => Text(
                                       '${v.toStringAsFixed(0)}s',
                                       style: const TextStyle(
@@ -150,10 +151,7 @@ class PowerChartWidget extends GetView<DashboardController> {
                               gridData: FlGridData(
                                 show: true,
                                 drawVerticalLine: false,
-                                horizontalInterval: (maxY / 4).clamp(
-                                  1,
-                                  double.infinity,
-                                ),
+                                horizontalInterval: 50.0,
                                 getDrawingHorizontalLine: (_) => FlLine(
                                   color: AppTheme.borderStrong.withValues(
                                     alpha: 0.5,
