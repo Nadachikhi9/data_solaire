@@ -219,7 +219,7 @@ class DashboardController extends GetxController {
       _applyFollowLatestViewport();
     }
 
-    chartMaxY.value = (maxY * 1.15).clamp(300.0, double.infinity);
+    chartMaxY.value = 300.0;
     powerSpots.assignAll(spots);
   }
 
