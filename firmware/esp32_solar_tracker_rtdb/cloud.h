@@ -5,3 +5,5 @@
 void cloudSetup();
 void cloudServeHttp();
 void cloudPushTracker();
+
+extern bool gFirebaseOk;

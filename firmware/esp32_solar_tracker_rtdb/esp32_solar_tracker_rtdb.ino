@@ -13,7 +13,7 @@
 #include "cloud.h"
 
 static uint32_t sLastPushMs = 0;
-static constexpr uint32_t kPushIntervalMs = 1000;
+static constexpr uint32_t kPushIntervalMs = 4000; // Push every 4 seconds to avoid overloading the ESP32
 
 void setup() {
   Serial.begin(115200);

@@ -1,5 +1,8 @@
 #include "cloud.h"
 
+bool gFirebaseOk = true;
+constexpr int kLedPin = 2; // Onboard LED for status tracking
+
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -97,6 +100,9 @@ static void connectWifi() {
     return;
   }
 
+  // Update LCD status during connection
+  hwShowStatus("Connecting WiFi", WIFI_SSID);
+
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   
   #if DEBUG_CLOUD
@@ -108,6 +114,7 @@ static void connectWifi() {
   int attemptCount = 0;
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
+    digitalWrite(kLedPin, !digitalRead(kLedPin)); // Blink while connecting
     Serial.print(".");
     attemptCount++;
     if (attemptCount > 40) {
@@ -125,30 +132,19 @@ static void connectWifi() {
     Serial.print("[CLOUD] WiFi connected! IP: ");
     Serial.println(WiFi.localIP());
     #endif
+    hwShowStatus("WiFi Connected", WiFi.localIP().toString().c_str());
+    delay(1000);
   } else {
     #if DEBUG_CLOUD
     Serial.println("[CLOUD] WARNING: WiFi connection failed!");
     #endif
+    hwShowStatus("WiFi Conn Fail", "System Offline");
+    delay(1500);
   }
 }
 
 static int sendPatchRequest(HTTPClient& http, const String& body) {
-  int code = http.PATCH(body);
-  #if DEBUG_CLOUD
-  if (code <= 0) {
-    Serial.println("[CLOUD] WARNING: PATCH request failed, retrying with sendRequest(PATCH)");
-  }
-  #endif
-  if (code <= 0) {
-    code = http.sendRequest("PATCH", body);
-  }
-  if (code <= 0 || code == 405 || code == 501) {
-    #if DEBUG_CLOUD
-    Serial.println("[CLOUD] WARNING: PATCH unsupported or failed, retrying with PUT");
-    #endif
-    code = http.sendRequest("PUT", body);
-  }
-  return code;
+  return http.PATCH(body);
 }
 
 static void setupNtp() {
@@ -156,6 +152,11 @@ static void setupNtp() {
   Serial.println("[CLOUD] === NTP Time Synchronization ===");
   #endif
   
+  if (WiFi.status() != WL_CONNECTED) {
+    return;
+  }
+
+  hwShowStatus("Syncing Time...", "NTP pool");
   configTime(0, 0, kNtpServer);
   
   #if DEBUG_CLOUD
@@ -166,6 +167,7 @@ static void setupNtp() {
   
   for (int i = 0; i < 40 && !timeSynchronized(); i++) {
     delay(500);
+    digitalWrite(kLedPin, !digitalRead(kLedPin)); // Blink while syncing NTP
     Serial.print(".");
   }
   Serial.println();
@@ -174,12 +176,16 @@ static void setupNtp() {
     #if DEBUG_CLOUD
     Serial.println("[CLOUD] WARNING: Time NOT synchronized! Firebase auth may fail.");
     #endif
+    hwShowStatus("Time Sync Fail", "Continuing...");
+    delay(1000);
   } else {
     #if DEBUG_CLOUD
     time_t now = time(nullptr);
     Serial.print("[CLOUD] NTP OK - Epoch: ");
     Serial.println(now);
     #endif
+    hwShowStatus("Time Sync OK", "");
+    delay(1000);
   }
 }
 
@@ -216,7 +222,9 @@ static String trackerPatchUrl() {
 
 static bool rtdbPatchTrackerJson(const String& body) {
   #if DEBUG_CLOUD
-  Serial.println("\n[CLOUD] === Firebase RTDB PATCH ===");
+  Serial.print("\n[CLOUD] === Firebase RTDB PATCH === Free Heap: ");
+  Serial.print(ESP.getFreeHeap());
+  Serial.println(" bytes");
   #endif
   
   if (WiFi.status() != WL_CONNECTED) {
@@ -237,60 +245,45 @@ static bool rtdbPatchTrackerJson(const String& body) {
   */
   
   WiFiClientSecure client;
+  // CRITICAL: set socket-level timeout BEFORE http.begin().
+  // Default is ~75s which is why data was arriving every 77 seconds.
+  client.setTimeout(8000); // 8-second TLS/socket timeout
   #if RTDB_TLS_INSECURE
   client.setInsecure();
-  #if DEBUG_CLOUD
-  Serial.println("[CLOUD] TLS: Insecure mode (no certificate verification)");
   #endif
-  #else
-  #if DEBUG_CLOUD
-  Serial.println("[CLOUD] TLS: Strict certificate verification");
-  #endif
-  #endif
-  
+
   HTTPClient http;
+  http.setTimeout(8000); // 8-second HTTP response timeout
   const String url = trackerPatchUrl();
-  
-  #if DEBUG_CLOUD
-  Serial.print("[CLOUD] URL: ");
-  // Hide the auth token in logs for security
-  String urlSafe = url;
-  int authIdx = urlSafe.indexOf("&auth=");
-  if (authIdx > 0) {
-    urlSafe = urlSafe.substring(0, authIdx + 6) + "***";
-  }
-  Serial.println(urlSafe);
-  Serial.print("[CLOUD] Body size: ");
-  Serial.print(body.length());
-  Serial.println(" bytes");
-  #endif
-  
+
   if (!http.begin(client, url)) {
     #if DEBUG_CLOUD
     Serial.println("[CLOUD] ERROR: HTTP begin failed!");
     #endif
+    client.stop();
     return false;
   }
-  
-  http.setTimeout(10000);
+
   http.addHeader("Content-Type", "application/json");
   http.addHeader("User-Agent", "DataSolaire-ESP32/1.0");
-  
+
   #if DEBUG_CLOUD
-  Serial.println("[CLOUD] Sending PATCH request...");
+  const unsigned long _pushStart = millis();
   #endif
-  
+
   const int code = sendPatchRequest(http, body);
-  const String response = http.getString();
-  
   #if DEBUG_CLOUD
-  Serial.print("[CLOUD] HTTP Response Code: ");
+  Serial.print("[CLOUD] PATCH took ");
+  Serial.print(millis() - _pushStart);
+  Serial.print(" ms | HTTP ");
   Serial.println(code);
-  if (response.length() > 0 && response.length() < 500) {
-    Serial.print("[CLOUD] Response: ");
-    Serial.println(response);
-  }
   #endif
+
+  // Only read response body on error to avoid wasting heap
+  String response = "";
+  if (code < 200 || code >= 300) {
+    response = http.getString();
+  }
   
   const bool ok = code >= 200 && code < 300;
   
@@ -298,38 +291,23 @@ static bool rtdbPatchTrackerJson(const String& body) {
     #if DEBUG_CLOUD
     Serial.print("[CLOUD] ERROR: PATCH failed with code ");
     Serial.println(code);
-    Serial.println("[CLOUD] Request body:");
-    Serial.println(body);
-    
-    // Print error codes with explanations
-    switch(code) {
-      case 400:
-        Serial.println("[CLOUD]   └─ 400 Bad Request: Check JSON format");
-        break;
-      case 401:
-        Serial.println("[CLOUD]   └─ 401 Unauthorized: Check Firebase auth secret or rules");
-        break;
-      case 403:
-        Serial.println("[CLOUD]   └─ 403 Forbidden: Firebase rules may prevent write access");
-        break;
-      case 404:
-        Serial.println("[CLOUD]   └─ 404 Not Found: Check FIREBASE_DATABASE_URL");
-        break;
-      case 500:
-        Serial.println("[CLOUD]   └─ 500 Server Error: Firebase service issue");
-        break;
-      default:
-        Serial.print("[CLOUD]   └─ See Firebase RTDB rules and network connection");
-        break;
+    if (response.length() > 0) {
+      Serial.print("[CLOUD] Firebase response: ");
+      Serial.println(response);
     }
-    #endif
-  } else {
-    #if DEBUG_CLOUD
-    Serial.println("[CLOUD] ✓ PATCH successful");
+    switch(code) {
+      case 400: Serial.println("[CLOUD]   └─ 400 Bad Request: Check JSON format"); break;
+      case 401: Serial.println("[CLOUD]   └─ 401 Unauthorized: Check Firebase auth secret or rules"); break;
+      case 403: Serial.println("[CLOUD]   └─ 403 Forbidden: Firebase rules may prevent write access"); break;
+      case 404: Serial.println("[CLOUD]   └─ 404 Not Found: Check FIREBASE_DATABASE_URL"); break;
+      case 500: Serial.println("[CLOUD]   └─ 500 Server Error: Firebase service issue"); break;
+      default:  Serial.println("[CLOUD]   └─ See Firebase RTDB rules and network connection"); break;
+    }
     #endif
   }
   
   http.end();
+  client.stop();
   return ok;
 }
 
@@ -373,6 +351,9 @@ void cloudSetup() {
   Serial.println("\n========== CLOUD SETUP START ==========");
   #endif
   
+  pinMode(kLedPin, OUTPUT);
+  digitalWrite(kLedPin, LOW);
+  
   connectWifi();
   setupNtp();
   
@@ -399,20 +380,33 @@ void cloudServeHttp() {
 
 void cloudPushTracker() {
   if (WiFi.status() != WL_CONNECTED) {
+    digitalWrite(kLedPin, LOW); // Turn off LED if disconnected
     #if DEBUG_CLOUD
-    Serial.println("[CLOUD] WARNING: WiFi disconnected, attempting reconnect...");
-    #endif
-    connectWifi();
-    if (WiFi.status() != WL_CONNECTED) {
-      #if DEBUG_CLOUD
-      static unsigned long lastWifiWarning = 0;
-      if (millis() - lastWifiWarning > 10000) {
-        Serial.println("[CLOUD] WARNING: WiFi still disconnected, skipping RTDB push");
-        lastWifiWarning = millis();
-      }
-      #endif
-      return;
+    static unsigned long lastWifiWarnMs = 0;
+    if (millis() - lastWifiWarnMs > 30000) {
+      Serial.println("[CLOUD] WARNING: WiFi disconnected, will auto-reconnect...");
+      lastWifiWarnMs = millis();
     }
+    
+    // Light-weight offline heartbeat dot on serial
+    static unsigned long lastOfflineDotMs = 0;
+    if (millis() - lastOfflineDotMs > 5000) {
+      Serial.print("?");
+      lastOfflineDotMs = millis();
+    }
+    #endif
+
+    // Periodically re-initiate non-blocking connection in background if offline
+    static unsigned long lastReconnectAttemptMs = 0;
+    if (millis() - lastReconnectAttemptMs > 30000) {
+      lastReconnectAttemptMs = millis();
+      #if DEBUG_CLOUD
+      Serial.println("[CLOUD] WiFi connection lost. Re-initiating in background...");
+      #endif
+      WiFi.disconnect();
+      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    }
+    return;
   }
   /* Time sync warning only - do not block push as we use Firebase server value for timestamps */
   #if DEBUG_CLOUD
@@ -514,16 +508,26 @@ void cloudPushTracker() {
   body += "}";
 
   if (rtdbPatchTrackerJson(body)) {
+    gFirebaseOk = true;
     sLastSuccessfulPushMs = epochMsNow();
+    
+    // Quick blink to indicate data sent
+    digitalWrite(kLedPin, LOW);
+    delay(50);
+    digitalWrite(kLedPin, HIGH);
+    
     #if DEBUG_CLOUD
-    // Only log success every ~5 seconds to reduce noise
-    static unsigned long lastSuccess = 0;
-    if (millis() - lastSuccess > 5000) {
-      Serial.println("[CLOUD] ✓ Data synced to Firebase");
-      lastSuccess = millis();
+    // Print a simple dot heartbeat to track data sending clearly
+    Serial.print(".");
+    static int dotCount = 0;
+    if (++dotCount >= 60) {
+      Serial.println();
+      dotCount = 0;
     }
     #endif
   } else {
+    gFirebaseOk = false;
+    digitalWrite(kLedPin, LOW); // Turn off LED if Firebase fails
     #if DEBUG_CLOUD
     if (sLastSuccessfulPushMs > 0) {
       const int64_t ageSec = (epochMsNow() - sLastSuccessfulPushMs) / 1000;

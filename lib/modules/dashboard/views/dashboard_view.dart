@@ -420,7 +420,7 @@ class _RtdbLiveChip extends StatelessWidget {
       final lastUpdateMs = controller.lastTelemetryUpdatedMs.value;
       final hasData = lastUpdateMs != null;
       final dataStale = hasData &&
-          DateTime.now().millisecondsSinceEpoch - lastUpdateMs > 5000;
+          DateTime.now().millisecondsSinceEpoch - lastUpdateMs > 12000; // Match DashboardController._staleMs (12s)
       final awaitingData = listening && !hasData;
       final waitingStale = listening && hasData && dataStale;
 
@@ -500,13 +500,13 @@ class _RtdbLiveChip extends StatelessWidget {
                 const SizedBox(width: 8),
                 Icon(icon, size: 18, color: fg),
                 const SizedBox(width: 8),
-                // Text(
-                //   statusLabel,
-                //   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                //         color: fg,
-                //         fontWeight: FontWeight.w700,
-                //       ),
-                // ),
+                Text(
+                  statusLabel,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: fg,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
               ],
             ),
           ),

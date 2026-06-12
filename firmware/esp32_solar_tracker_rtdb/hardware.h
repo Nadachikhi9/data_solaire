@@ -4,12 +4,12 @@
 
 // DEBUG FLAGS
 #define DEBUG_HARDWARE 1
-#define DEBUG_LDR 1
-#define DEBUG_INA219 1
-#define DEBUG_DHT 1
-#define DEBUG_SERVO 1
-#define DEBUG_LCD 1
-#define DEBUG_FAN 1
+#define DEBUG_LDR 0
+#define DEBUG_INA219 0
+#define DEBUG_DHT 0
+#define DEBUG_SERVO 0
+#define DEBUG_LCD 0
+#define DEBUG_FAN 0
 
 // Pins (matches the new hardware wiring).
 constexpr int kDhtPin = 4;
@@ -31,6 +31,7 @@ constexpr float kFanOnTempC = 25.0f;
 void hwSetup();
 void hwLoop();
 void hwRunDiagnostics();
+void hwShowStatus(const char* line1, const char* line2);
 
 // Telemetry produced by hwLoop() (read-only from outside).
 extern float gVoltageV;

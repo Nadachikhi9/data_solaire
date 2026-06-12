@@ -5,6 +5,8 @@
 #include <LiquidCrystal_I2C.h>
 #include <ESP32Servo.h>
 #include "DHT.h"
+#include <WiFi.h>
+#include "cloud.h"
 
 #define DHTTYPE DHT22
 
@@ -40,8 +42,7 @@ static inline float clamp01(float v) {
 
 void hwSetup() {
   #if DEBUG_HARDWARE
-  Serial.begin(115200);
-  delay(1000);
+  delay(100);
   Serial.println("\n========== HARDWARE SETUP START ==========");
   Serial.println("[HW] Initializing pins and modules...");
   #endif
@@ -97,6 +98,7 @@ void hwSetup() {
     Serial.println("[INA219] First read - V: " + String(v, 2) + "V, I: " + String(i, 1) + "mA, P: " + String(p, 1) + "mW");
     #endif
   }
+  Wire.setTimeOut(100); // Set 100ms timeout to prevent I2C bus hangs due to noise
 
   // Setup Servos
   #if DEBUG_SERVO
@@ -140,130 +142,165 @@ void hwSetup() {
 }
 
 void hwLoop() {
-  // Read all LDRs
-  const int HG = analogRead(kPinLdrHG);
-  const int HD = analogRead(kPinLdrHD);
-  const int BG = analogRead(kPinLdrBG);
-  const int BD = analogRead(kPinLdrBD);
-  gLdrHG = HG; gLdrHD = HD; gLdrBG = BG; gLdrBD = BD;
+  const uint32_t now = millis();
+  static uint32_t sLastTrackingTimeMs = 0;
+  static uint32_t sLastSensorTimeMs = 0;
 
-  #if DEBUG_LDR
-  static unsigned long lastLdrPrint = 0;
-  if (millis() - lastLdrPrint > 5000) {
-    Serial.println("[LDR] Raw readings - HG: " + String(HG) + ", HD: " + String(HD) + 
-                   ", BG: " + String(BG) + ", BD: " + String(BD));
-    lastLdrPrint = millis();
-  }
-  #endif
+  // 1. LDR solar tracking & servo alignment (every 100ms)
+  if (now - sLastTrackingTimeMs >= 100) {
+    sLastTrackingTimeMs = now;
 
-  const int moyHaut = (HG + HD) >> 1;
-  const int moyBas = (BG + BD) >> 1;
-  const int moyGauche = (HG + BG) >> 1;
-  const int moyDroite = (HD + BD) >> 1;
+    // Read all LDRs
+    const int HG = analogRead(kPinLdrHG);
+    const int HD = analogRead(kPinLdrHD);
+    const int BG = analogRead(kPinLdrBG);
+    const int BD = analogRead(kPinLdrBD);
+    gLdrHG = HG; gLdrHD = HD; gLdrBG = BG; gLdrBD = BD;
 
-  const int diffY = moyHaut - moyBas;
-  int servoYTarget = kServoStopVal;
-  if (abs(diffY) > kLdrTolerance) {
-    servoYTarget = diffY > 0 ? (kServoStopVal + kServoSpeed) : (kServoStopVal - kServoSpeed);
-  }
-  servoY.write(servoYTarget);
-
-  const int diffX = moyGauche - moyDroite;
-  int servoXTarget = kServoStopVal;
-  if (abs(diffX) > kLdrTolerance) {
-    servoXTarget = diffX > 0 ? (kServoStopVal - kServoSpeed) : (kServoStopVal + kServoSpeed);
-  }
-  servoX.write(servoXTarget);
-
-  #if DEBUG_SERVO
-  static unsigned long lastServoPrint = 0;
-  if (millis() - lastServoPrint > 5000) {
-    Serial.println("[SERVO] Targets - X: " + String(servoXTarget) + "°, Y: " + String(servoYTarget) + 
-                   "° | Differences - X: " + String(diffX) + ", Y: " + String(diffY));
-    lastServoPrint = millis();
-  }
-  #endif
-
-  gSunOptimal = (abs(diffY) <= kLdrTolerance) && (abs(diffX) <= kLdrTolerance);
-  gIrradianceNormalized = clamp01((float)(HG + HD + BG + BD) / (4.0f * 4095.0f));
-  gLdrTopNorm = clamp01((float)moyHaut / 4095.0f);
-  gLdrBottomNorm = clamp01((float)moyBas / 4095.0f);
-  gLdrLeftNorm = clamp01((float)moyGauche / 4095.0f);
-  gLdrRightNorm = clamp01((float)moyDroite / 4095.0f);
-  // LDR channels are considered valid when data is present; do not treat low light as a sensor fault.
-  gLdrTopOk = true;
-  gLdrBottomOk = true;
-  gLdrLeftOk = true;
-  gLdrRightOk = true;
-
-  // Read DHT22
-  const float t = dht.readTemperature();
-  gDhtOk = !isnan(t);
-  if (gDhtOk) {
-    gTemperatureC = t;
-    #if DEBUG_DHT
-    static unsigned long lastDhtPrint = 0;
-    if (millis() - lastDhtPrint > 5000) {
-      Serial.println("[DHT] Temperature: " + String(t, 1) + " C");
-      lastDhtPrint = millis();
+    #if DEBUG_LDR
+    static unsigned long lastLdrPrint = 0;
+    if (now - lastLdrPrint > 5000) {
+      Serial.println("[LDR] Raw readings - HG: " + String(HG) + ", HD: " + String(HD) + 
+                     ", BG: " + String(BG) + ", BD: " + String(BD));
+      lastLdrPrint = now;
     }
     #endif
-  } else {
-    #if DEBUG_DHT
-    static unsigned long lastDhtErrorPrint = 0;
-    if (millis() - lastDhtErrorPrint > 10000) {
-      Serial.println("[DHT] ERROR: Failed to read temperature (NaN)");
-      lastDhtErrorPrint = millis();
+
+    const int moyHaut = (HG + HD) >> 1;
+    const int moyBas = (BG + BD) >> 1;
+    const int moyGauche = (HG + BG) >> 1;
+    const int moyDroite = (HD + BD) >> 1;
+
+    const int diffY = moyHaut - moyBas;
+    int servoYTarget = kServoStopVal;
+    if (abs(diffY) > kLdrTolerance) {
+      servoYTarget = diffY > 0 ? (kServoStopVal + kServoSpeed) : (kServoStopVal - kServoSpeed);
+    }
+    servoY.write(servoYTarget);
+
+    const int diffX = moyGauche - moyDroite;
+    int servoXTarget = kServoStopVal;
+    if (abs(diffX) > kLdrTolerance) {
+      servoXTarget = diffX > 0 ? (kServoStopVal - kServoSpeed) : (kServoStopVal + kServoSpeed);
+    }
+    servoX.write(servoXTarget);
+
+    #if DEBUG_SERVO
+    static unsigned long lastServoPrint = 0;
+    if (now - lastServoPrint > 5000) {
+      Serial.println("[SERVO] Targets - X: " + String(servoXTarget) + "°, Y: " + String(servoYTarget) + 
+                     "° | Differences - X: " + String(diffX) + ", Y: " + String(diffY));
+      lastServoPrint = now;
     }
     #endif
+
+    gSunOptimal = (abs(diffY) <= kLdrTolerance) && (abs(diffX) <= kLdrTolerance);
+    gIrradianceNormalized = clamp01((float)(HG + HD + BG + BD) / (4.0f * 4095.0f));
+    gLdrTopNorm = clamp01((float)moyHaut / 4095.0f);
+    gLdrBottomNorm = clamp01((float)moyBas / 4095.0f);
+    gLdrLeftNorm = clamp01((float)moyGauche / 4095.0f);
+    gLdrRightNorm = clamp01((float)moyDroite / 4095.0f);
+    // LDR channels are considered valid when data is present; do not treat low light as a sensor fault.
+    gLdrTopOk = true;
+    gLdrBottomOk = true;
+    gLdrLeftOk = true;
+    gLdrRightOk = true;
   }
 
-  // Control Fan
-  const bool fanOn = gDhtOk && t >= kFanOnTempC;
-  digitalWrite(kFanPin, fanOn ? HIGH : LOW);
-  gVentilationOn = fanOn;
-  
-  #if DEBUG_FAN
-  static unsigned long lastFanPrint = 0;
-  if (millis() - lastFanPrint > 5000) {
-    Serial.println("[FAN] State: " + String(gVentilationOn ? "ON" : "OFF") + 
-                   " | Temp threshold: " + String(kFanOnTempC) + "C | Temp: " + 
-                   String(gDhtOk ? String(t, 1) : "ERROR") + "C");
-    lastFanPrint = millis();
-  }
-  #endif
+  // 2. Read DHT22, Control Fan, and Read INA219 (every 2000ms)
+  if (now - sLastSensorTimeMs >= 2000) {
+    sLastSensorTimeMs = now;
 
-  // Read INA219
-  if (gIna219Ready) {
-    gVoltageV = ina219.getBusVoltage_V();
-    gCurrentA = ina219.getCurrent_mA() / 1000.0f;
-    gPowerW = ina219.getPower_mW() / 1000.0f;
+    // Read DHT22
+    const float t = dht.readTemperature();
+    gDhtOk = !isnan(t);
+    if (gDhtOk) {
+      gTemperatureC = t;
+      #if DEBUG_DHT
+      static unsigned long lastDhtPrint = 0;
+      if (now - lastDhtPrint > 5000) {
+        Serial.println("[DHT] Temperature: " + String(t, 1) + " C");
+        lastDhtPrint = now;
+      }
+      #endif
+    } else {
+      #if DEBUG_DHT
+      static unsigned long lastDhtErrorPrint = 0;
+      if (now - lastDhtErrorPrint > 10000) {
+        Serial.println("[DHT] ERROR: Failed to read temperature (NaN)");
+        lastDhtErrorPrint = now;
+      }
+      #endif
+    }
+
+    // Control Fan
+    const bool fanOn = gDhtOk && t >= kFanOnTempC;
+    digitalWrite(kFanPin, fanOn ? HIGH : LOW);
+    gVentilationOn = fanOn;
     
-    #if DEBUG_INA219
-    static unsigned long lastInaPrint = 0;
-    if (millis() - lastInaPrint > 5000) {
-      Serial.println("[INA219] V: " + String(gVoltageV, 2) + "V, I: " + String(gCurrentA * 1000, 1) + 
-                     "mA, P: " + String(gPowerW * 1000, 1) + "mW");
-      lastInaPrint = millis();
+    #if DEBUG_FAN
+    static unsigned long lastFanPrint = 0;
+    if (now - lastFanPrint > 5000) {
+      Serial.println("[FAN] State: " + String(gVentilationOn ? "ON" : "OFF") + 
+                     " | Temp threshold: " + String(kFanOnTempC) + "C | Temp: " + 
+                     String(gDhtOk ? String(t, 1) : "ERROR") + "C");
+      lastFanPrint = now;
     }
     #endif
-  } else {
-    gVoltageV = 0.0f;
-    gCurrentA = 0.0f;
-    gPowerW = 0.0f;
-    #if DEBUG_INA219
-    static unsigned long lastInaErrorPrint = 0;
-    if (millis() - lastInaErrorPrint > 10000) {
-      Serial.println("[INA219] ERROR: Module not ready, skipping read");
-      lastInaErrorPrint = millis();
+
+    // Read INA219
+    if (gIna219Ready) {
+      gVoltageV = ina219.getBusVoltage_V();
+      gCurrentA = ina219.getCurrent_mA() / 1000.0f;
+      gPowerW = ina219.getPower_mW() / 1000.0f;
+      
+      #if DEBUG_INA219
+      static unsigned long lastInaPrint = 0;
+      if (now - lastInaPrint > 5000) {
+        Serial.println("[INA219] V: " + String(gVoltageV, 2) + "V, I: " + String(gCurrentA * 1000, 1) + 
+                       "mA, P: " + String(gPowerW * 1000, 1) + "mW");
+        lastInaPrint = now;
+      }
+      #endif
+    } else {
+      gVoltageV = 0.0f;
+      gCurrentA = 0.0f;
+      gPowerW = 0.0f;
+      #if DEBUG_INA219
+      static unsigned long lastInaErrorPrint = 0;
+      if (now - lastInaErrorPrint > 10000) {
+        Serial.println("[INA219] ERROR: Module not ready, skipping read");
+        lastInaErrorPrint = now;
+      }
+      #endif
     }
-    #endif
   }
 
-  // Update LCD Display
-  if (millis() - sLastDisplayTime > 3000) {
+  // 3. Update LCD Display (every 3000ms)
+  if (now - sLastDisplayTime > 3000) {
     lcd.clear();
-    if (sToggleDisplay) {
+    
+    String errorMsg = "";
+    if (WiFi.status() != WL_CONNECTED) {
+      errorMsg = "WIFI DISCON.";
+    } else if (!gFirebaseOk) {
+      errorMsg = "FIREBASE ERR";
+    } else if (!gIna219Ready) {
+      errorMsg = "INA219 FAULT";
+    } else if (!gDhtOk) {
+      errorMsg = "DHT22 FAULT";
+    }
+
+    if (errorMsg.length() > 0 && sToggleDisplay) {
+      lcd.setCursor(0, 0);
+      lcd.print("SYSTEM ERROR:");
+      lcd.setCursor(0, 1);
+      lcd.print(errorMsg);
+      
+      #if DEBUG_LCD
+      Serial.println("[LCD] Display Error - " + errorMsg);
+      #endif
+    } else if (sToggleDisplay || (errorMsg.length() == 0 && sToggleDisplay)) {
       const float V = gVoltageV;
       const float I_mA = gCurrentA * 1000.0f;
       const float P_mW = gPowerW * 1000.0f;
@@ -290,7 +327,7 @@ void hwLoop() {
       #endif
     }
     sToggleDisplay = !sToggleDisplay;
-    sLastDisplayTime = millis();
+    sLastDisplayTime = now;
   }
 }
 
@@ -407,5 +444,13 @@ void hwRunDiagnostics() {
   Serial.println("  5. Fan should spin when turned ON");
   Serial.println("  6. LCD should display text clearly");
   Serial.println("=========================================\n");
+}
+
+void hwShowStatus(const char* line1, const char* line2) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(line1);
+  lcd.setCursor(0, 1);
+  lcd.print(line2);
 }
 

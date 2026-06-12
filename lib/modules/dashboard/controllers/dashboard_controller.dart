@@ -79,7 +79,7 @@ class DashboardController extends GetxController {
   final RxBool rtdbStreamStarted = false.obs;
   final RxnInt lastTelemetryUpdatedMs = RxnInt();
 
-  static const int _staleMs = 5000;
+  static const int _staleMs = 12000; // 12 seconds staleness threshold (ESP32 pushes every 4s)
 
   /// Default visible window width when following live data.
   static const int _chartWindowMs = 60000;
@@ -121,7 +121,7 @@ class DashboardController extends GetxController {
           rtdbStatus.value = RtdbConnectionStatus.error;
           rtdbError.value = '${AppStrings.rtdbListenError} : $e';
           if (kDebugMode) {
-            debugPrint('RTDB onError: $e\n$st');
+            debugPrint('[RTDB] ❌ Listener Error: $e\n$st');
           }
           _scheduleRtdbReconnect();
         },
@@ -131,7 +131,7 @@ class DashboardController extends GetxController {
       rtdbStatus.value = RtdbConnectionStatus.error;
       rtdbError.value = '${AppStrings.rtdbListenError} : $e';
       if (kDebugMode) {
-        debugPrint('RTDB subscribe: $e\n$st');
+        debugPrint('[RTDB] ❌ Subscription Exception: $e\n$st');
       }
       _scheduleRtdbReconnect();
     }
@@ -169,6 +169,17 @@ class DashboardController extends GetxController {
 
     _latestState = state;
     final t = state.telemetry;
+    
+    if (kDebugMode) {
+      debugPrint('[DashboardController] 📥 Telemetry Update Received:');
+      debugPrint('  ├─ Voltage: ${t.voltage} V');
+      debugPrint('  ├─ Current: ${t.current} A');
+      debugPrint('  ├─ Power: ${t.power} W');
+      debugPrint('  ├─ Temperature: ${t.temperature} °C');
+      debugPrint('  ├─ Sun Optimal: ${state.sun.isOptimal}');
+      debugPrint('  └─ Last Updated: ${t.lastUpdatedMs != null ? DateTime.fromMillisecondsSinceEpoch(t.lastUpdatedMs!).toIso8601String() : 'N/A'}');
+    }
+
     lastTelemetryUpdatedMs.value = t.lastUpdatedMs;
     voltage.value = t.voltage;
     current.value = t.current;
