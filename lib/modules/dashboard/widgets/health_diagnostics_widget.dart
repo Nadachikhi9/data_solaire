@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:data_solaire/app/theme/app_theme.dart';
 import 'package:data_solaire/core/constants/app_strings.dart';
+import 'package:data_solaire/data/models/sun_state.dart';
 import 'package:data_solaire/modules/dashboard/controllers/dashboard_controller.dart';
 
 class HealthDiagnosticsWidget extends GetView<DashboardController> {
@@ -341,6 +342,120 @@ class _AuxRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Displays the 4 raw ADC readings from the LDR sensors (0–4095).
+class _LdrRawCard extends StatelessWidget {
+  const _LdrRawCard({required this.offline, required this.sun});
+
+  final bool offline;
+  final SunState sun;
+
+  @override
+  Widget build(BuildContext context) {
+    final raw = sun.ldrRaw;
+
+    // Label → value pairs in physical quadrant order
+    final entries = [
+      ('HG – Haut-Gauche (pin 34)', raw?.hg),
+      ('HD – Haut-Droite  (pin 32)', raw?.hd),
+      ('BG – Bas-Gauche   (pin 35)', raw?.bg),
+      ('BD – Bas-Droite   (pin 33)', raw?.bd),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        color: AppTheme.surfaceHigh.withValues(alpha: 0.55),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tune_rounded, size: 16, color: AppTheme.teal),
+              const SizedBox(width: 8),
+              Text(
+                'Valeurs brutes LDR  (ADC 0–4095)',
+                style: AppTheme.labelInstrument(context)
+                    .copyWith(color: AppTheme.onSurface),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final entry in entries) ...[
+            _LdrRawRow(
+              label: entry.$1,
+              value: offline ? null : entry.$2,
+            ),
+            const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LdrRawRow extends StatelessWidget {
+  const _LdrRawRow({required this.label, required this.value});
+
+  final String label;
+  final int? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasValue = value != null;
+    final frac = hasValue ? (value! / 4095.0).clamp(0.0, 1.0) : 0.0;
+
+    // Colour gradient: teal (dark) → amber (bright sun)
+    final barColor = hasValue
+        ? Color.lerp(
+            AppTheme.teal.withValues(alpha: 0.55),
+            AppTheme.warning,
+            frac,
+          )!
+        : AppTheme.onMuted.withValues(alpha: 0.3);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: AppTheme.onMuted),
+              ),
+            ),
+            Text(
+              hasValue ? value.toString() : 'N/A',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ).copyWith(
+                color: hasValue ? AppTheme.onSurface : AppTheme.onMuted,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: frac,
+            minHeight: 5,
+            backgroundColor: AppTheme.surfaceGlow,
+            valueColor: AlwaysStoppedAnimation<Color>(barColor),
+          ),
+        ),
+      ],
     );
   }
 }

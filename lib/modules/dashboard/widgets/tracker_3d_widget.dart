@@ -352,6 +352,23 @@ class _HudChip extends StatelessWidget {
                         ? Colors.green.withValues(alpha: 0.85)
                         : Colors.red.withValues(alpha: 0.7),
                   ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('HG: ${sun.ldrRaw?.hg ?? '-'}', style: mutedStyle),
+                      const SizedBox(width: 16),
+                      Text('HD: ${sun.ldrRaw?.hd ?? '-'}', style: mutedStyle),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('BG: ${sun.ldrRaw?.bg ?? '-'}', style: mutedStyle),
+                      const SizedBox(width: 16),
+                      Text('BD: ${sun.ldrRaw?.bd ?? '-'}', style: mutedStyle),
+                    ],
+                  ),
                 ],
               ),
             ),

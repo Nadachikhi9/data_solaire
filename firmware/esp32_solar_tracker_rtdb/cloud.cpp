@@ -464,6 +464,12 @@ void cloudPushTracker() {
   body += ",\"left\":" + safeJsonNumber(gLdrLeftNorm, 4);
   body += ",\"right\":" + safeJsonNumber(gLdrRightNorm, 4);
   body += "}";
+  body += ",\"ldr_raw\":{";
+  body += "\"hg\":" + String(gLdrHG);
+  body += ",\"hd\":" + String(gLdrHD);
+  body += ",\"bg\":" + String(gLdrBG);
+  body += ",\"bd\":" + String(gLdrBD);
+  body += "}";
   body += "}";
 
   body += ",\"thresholds\":{";

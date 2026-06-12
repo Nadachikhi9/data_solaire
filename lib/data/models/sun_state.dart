@@ -1,6 +1,45 @@
 import 'package:flutter/foundation.dart';
 
 @immutable
+class LdrRaw {
+  const LdrRaw({this.hg, this.hd, this.bg, this.bd});
+
+  final int? hg; // Haut-Gauche (top-left)  – pin 34
+  final int? hd; // Haut-Droite (top-right) – pin 32
+  final int? bg; // Bas-Gauche (bottom-left) – pin 35
+  final int? bd; // Bas-Droite (bottom-right) – pin 33
+
+  static LdrRaw? fromMap(Map<dynamic, dynamic>? map) {
+    if (map == null) return null;
+    return LdrRaw(
+      hg: _toInt(map['hg']),
+      hd: _toInt(map['hd']),
+      bg: _toInt(map['bg']),
+      bd: _toInt(map['bd']),
+    );
+  }
+
+  static int? _toInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.round();
+    return int.tryParse(v.toString());
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is LdrRaw &&
+        other.hg == hg &&
+        other.hd == hd &&
+        other.bg == bg &&
+        other.bd == bd;
+  }
+
+  @override
+  int get hashCode => Object.hash(hg, hd, bg, bd);
+}
+
+@immutable
 class LdrQuadrants {
   const LdrQuadrants({this.top, this.bottom, this.left, this.right});
 
@@ -44,21 +83,27 @@ class SunState {
     this.isOptimal,
     this.irradianceNormalized,
     this.ldrQuadrants,
+    this.ldrRaw,
   });
 
   final bool? isOptimal;
   final double? irradianceNormalized;
   final LdrQuadrants? ldrQuadrants;
+  final LdrRaw? ldrRaw;
 
   static SunState fromMap(Map<dynamic, dynamic>? map) {
     if (map == null) return const SunState();
     Map<dynamic, dynamic>? lqMap;
+    Map<dynamic, dynamic>? lrMap;
     final lq = map['ldr_quadrants'];
     if (lq is Map) lqMap = lq.cast<dynamic, dynamic>();
+    final lr = map['ldr_raw'];
+    if (lr is Map) lrMap = lr.cast<dynamic, dynamic>();
     return SunState(
       isOptimal: map['is_optimal'] as bool? ?? map['sun_optimal'] as bool?,
       irradianceNormalized: _toDouble(map['irradiance_normalized'] ?? map['irradiance']),
       ldrQuadrants: LdrQuadrants.fromMap(lqMap),
+      ldrRaw: LdrRaw.fromMap(lrMap),
     );
   }
 
@@ -73,12 +118,13 @@ class SunState {
     return other is SunState &&
         other.isOptimal == isOptimal &&
         other.irradianceNormalized == irradianceNormalized &&
-        other.ldrQuadrants == ldrQuadrants;
+        other.ldrQuadrants == ldrQuadrants &&
+        other.ldrRaw == ldrRaw;
   }
 
   @override
   int get hashCode =>
-      Object.hash(isOptimal, irradianceNormalized, ldrQuadrants);
+      Object.hash(isOptimal, irradianceNormalized, ldrQuadrants, ldrRaw);
 }
 
 @immutable
