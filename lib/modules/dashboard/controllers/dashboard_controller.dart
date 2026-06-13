@@ -362,24 +362,35 @@ class DashboardController extends GetxController {
     _mockAlertPrevFwFault = fwFault;
   }
 
-  bool _ldrQuadrantsAllAboveThreshold(LdrQuadrants? q) {
+  bool _ldrQuadrantsAllAboveThreshold(SunState sun) {
+    final raw = sun.ldrRaw;
+    if (raw != null && raw.hg != null && raw.hd != null && raw.bg != null && raw.bd != null) {
+      if (raw.hg! >= _ldrHighCountThreshold &&
+          raw.hd! >= _ldrHighCountThreshold &&
+          raw.bg! >= _ldrHighCountThreshold &&
+          raw.bd! >= _ldrHighCountThreshold) {
+        return true;
+      }
+    }
+
+    final q = sun.ldrQuadrants;
     if (q == null) return false;
-    return (q.top ?? double.negativeInfinity) > _ldrHighCountThreshold &&
-        (q.bottom ?? double.negativeInfinity) > _ldrHighCountThreshold &&
-        (q.left ?? double.negativeInfinity) > _ldrHighCountThreshold &&
-        (q.right ?? double.negativeInfinity) > _ldrHighCountThreshold;
+    return (q.top ?? double.negativeInfinity) >= _ldrHighCountThreshold &&
+        (q.bottom ?? double.negativeInfinity) >= _ldrHighCountThreshold &&
+        (q.left ?? double.negativeInfinity) >= _ldrHighCountThreshold &&
+        (q.right ?? double.negativeInfinity) >= _ldrHighCountThreshold;
   }
 
   bool _isSolarPanelFault(TrackerRtdbState state) {
     final p = state.telemetry.power;
     return p != null && p <= _panelFaultPowerToleranceW &&
-        _ldrQuadrantsAllAboveThreshold(state.sun.ldrQuadrants);
+        _ldrQuadrantsAllAboveThreshold(state.sun);
   }
 
   bool _isCleaningWarning(TrackerRtdbState state) {
     final p = state.telemetry.power;
-    return p != null && p < _cleaningLowPowerThresholdW &&
-        _ldrQuadrantsAllAboveThreshold(state.sun.ldrQuadrants) &&
+    return p != null && p <= _cleaningLowPowerThresholdW &&
+        _ldrQuadrantsAllAboveThreshold(state.sun) &&
         !_isSolarPanelFault(state);
   }
 
