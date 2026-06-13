@@ -309,24 +309,26 @@ class _HeroHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                AppStrings.dashboardTitle,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: AppTheme.onSurface,
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                AppStrings.appSubtitle,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.onSurface.withValues(alpha: 0.75),
-                    ),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppStrings.dashboardTitle,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: AppTheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  AppStrings.appSubtitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.onSurface.withValues(alpha: 0.75),
+                      ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 12),
           _DashboardStatusIcons(),
@@ -413,6 +415,8 @@ class _RtdbLiveChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.sizeOf(context).width < 600;
+
     return Obx(() {
       final status = controller.rtdbStatus.value;
       final err = controller.rtdbError.value;
@@ -499,14 +503,16 @@ class _RtdbLiveChip extends StatelessWidget {
                 dot,
                 const SizedBox(width: 8),
                 Icon(icon, size: 18, color: fg),
-                const SizedBox(width: 8),
-                Text(
-                  statusLabel,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: fg,
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
+                if (!isSmall) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    statusLabel,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: fg,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ],
               ],
             ),
           ),
